@@ -1,0 +1,14 @@
+[package]
+name = "nectar"
+authors = ["Rob Wagner <rob@sombia.com>"]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Tokio Telnet codec with MUD protocol extension support."
+repository = "https://github.com/robertwayne/petal"
+categories = ["network-programming"]
+keywords = ["blossom", "mud", "tokio", "telnet", "gmcp"]
+
+[dependencies]
+bytes = "1"
+tokio-util = { version = "0.7", features = ["codec"] }

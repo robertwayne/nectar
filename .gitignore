@@ -1,0 +1,14 @@
+# Directories
+dist
+build
+target
+node_modules
+
+# Files
+Cargo.lock
+.log
+.env
+
+# User Settings
+.vscode
+.idea
