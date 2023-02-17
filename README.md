@@ -13,9 +13,10 @@ docs](https://docs.rs/tokio-util/latest/tokio_util/codec/struct.Framed.html)** f
 
 ```rust
 // Example of a simple connection loop running in Tokio.
-use tokio::net::TcpStream;
-use tokio_util::codec::Framed;
+use anyhow::Result;
 use nectar::{event::TelnetEvent, TelnetCodec};
+use tokio_util::codec::Framed;
+use tokio::net::TcpStream;
 
 async fn connection_loop(stream: TcpStream) {
     let mut frame = Framed::new(stream, TelnetCodec::new());
@@ -41,9 +42,10 @@ async fn connection_loop(stream: TcpStream) {
 // Example of sending an IAC (Interpret-As-Command) message.
 // You can see a more realistic example in the Blossom source code here: 
 // https://github.com/robertwayne/blossom/blob/dev/blossom/src/auth.rs#L287
-use tokio::net::TcpStream;
-use tokio_util::codec::Framed;
+use anyhow::Result;
 use nectar::{event::TelnetEvent, TelnetCodec};
+use tokio_util::codec::Framed;
+use tokio::net::TcpStream;
 
 async fn get_password(frame: Framed<TcpStream, TelnetCodec>) -> Result<String> {
     // Disable echo (eg. hide password input)
