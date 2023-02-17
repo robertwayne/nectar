@@ -5,11 +5,20 @@ protocol extension support. It was designed specifically for use with
 **[Blossom](https://github.com/robertwayne/blossom)**, but could be inserted
 into any Tokio-based application.
 
+Supports primary negotiation options: DO, DONT, WILL, WONT. Supports
+subnegotiation (NAWS, custom byte sequences). Aims to implement some of the
+popular MUD protocol extensions.
+
 ## Usage
 
-You need to use `tokio-utils` with the  `codec` feature enabled, then simply pass
-the `TelnetCodec` to the `Framed` struct. See the **[Tokio
-docs](https://docs.rs/tokio-util/latest/tokio_util/codec/struct.Framed.html)** for more information.
+You must be using `tokio-utils` with the  `codec` feature enabled. In your
+stream handler, pass the `TelnetCodec` to the `Framed` struct along with your
+stream. See the **[Tokio
+docs](https://docs.rs/tokio-util/latest/tokio_util/codec/struct.Framed.html)**
+for more information on how this is used.
+
+In general, this is all you need to know. Your stream will now be interpreted as
+Telnet.
 
 ```rust
 // Example of a simple connection loop running in Tokio.
