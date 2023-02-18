@@ -1,4 +1,8 @@
-use std::error::Error;
+use std::{
+    error::Error,
+    fmt::{Display, Formatter},
+    io,
+};
 
 #[derive(Debug)]
 pub enum TelnetErrorType {
@@ -12,8 +16,8 @@ pub struct TelnetError {
     pub message: String,
 }
 
-impl std::fmt::Display for TelnetError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for TelnetError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.message)
     }
 }
@@ -24,8 +28,8 @@ impl From<String> for TelnetError {
     }
 }
 
-impl From<std::io::Error> for TelnetError {
-    fn from(err: std::io::Error) -> Self {
+impl From<io::Error> for TelnetError {
+    fn from(err: io::Error) -> Self {
         Self { kind: TelnetErrorType::Io, message: err.to_string() }
     }
 }

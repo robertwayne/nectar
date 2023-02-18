@@ -5,6 +5,7 @@ use crate::{
 };
 
 /// Represents all Telnet events supported by Nectar.
+/// See `<https://tools.ietf.org/html/rfc854>` for more information.
 #[derive(Debug)]
 pub enum TelnetEvent {
     Character(u8),

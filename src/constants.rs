@@ -16,10 +16,10 @@ pub const CR: u8 = 13; // Carriage Return
 pub const LF: u8 = 10; // Line Feed
 pub const CRLF: &[u8] = b"\r\n";
 
-// https://tools.ietf.org/search/rfc1116 2.1 The LINEMODE function
+// `<https://tools.ietf.org/search/rfc1116>` 2.1 The LINEMODE function
 pub const LINEMODE: u8 = 34;
 
-// https://tools.ietf.org/search/rfc1116 2.2 LINEMODE suboption MODE
+// `<https://tools.ietf.org/search/rfc1116>` 2.2 LINEMODE suboption MODE
 pub const MODE: u8 = 1; //
 
 // When set, the client side of the connection should process all input lines,

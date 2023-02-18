@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
-// RFC 854 https://tools.ietf.org/html/rfc854
+// RFC 854 `<https://tools.ietf.org/html/rfc854>`
 //
 // Originally based off of https://github.com/jtenner/telnet_codec, which has
 // been archived.
