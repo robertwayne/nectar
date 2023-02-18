@@ -5,10 +5,16 @@
 //
 // Originally based off of https://github.com/jtenner/telnet_codec, which has
 // been archived.
+
+/// Various byte or byte sequences used in the Telnet protocol.
 pub mod constants;
+/// Codec and Io errors that may occur while processing Telnet events.
 pub mod error;
+/// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
 pub mod event;
+/// Telnet options such as Echo, GoAhead, and SupressGoAhead.
 pub mod option;
+/// Telnet subnegotiation options.
 pub mod subnegotiation;
 
 use std::mem;
