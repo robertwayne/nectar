@@ -1,5 +1,16 @@
 # nectar
 
+<!-- markdownlint-disable -->
+<div align="right">
+<a href="https://crates.io/crates/nectar">
+    <img src="https://img.shields.io/crates/v/nectar?style=flat-square" alt="crates.io badge">
+</a>
+<a href="https://docs.rs/nectar/latest/nectar/">
+    <img src="https://img.shields.io/docsrs/nectar?style=flat-square" alt="docs.rs badge">
+</a>
+</div>
+<!-- markdownlint-enable -->
+
 `nectar` is a Tokio codec providing a partial Telnet protocol (RFC 854)
 implementation.
 
