@@ -49,8 +49,7 @@ async fn handler(stream: TcpStream) -> Result<(), Box<dyn Error>> {
                 // ...or just echo back whatever the user has said!
                 frame.send(TelnetEvent::Message(format!("You said: {}\n", string))).await?;
             }
-            // We break here to close to connection. You can manually handle
-            // other events here if you wish.
+            // We break here to close to connection.
             _ => break,
         }
     }
