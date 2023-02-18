@@ -1,7 +1,10 @@
-// Based off of https://github.com/jtenner/telnet_codec, which has been
-// archived. This aims to provide more MUD-oriented protocol support, rather
-// than an exhaustive Telnet implementation (ie. many Telnet features which are
-// not used in MUDs won't necessarily have support).
+#![doc = include_str!("../README.md")]
+#![forbid(unsafe_code)]
+
+// RFC 854 https://tools.ietf.org/html/rfc854
+//
+// Originally based off of https://github.com/jtenner/telnet_codec, which has
+// been archived.
 pub mod constants;
 pub mod error;
 pub mod event;
