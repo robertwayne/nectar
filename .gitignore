@@ -1,14 +1,14 @@
 # Directories
-dist
-build
 target
-node_modules
 
-# Files
-Cargo.lock
-.log
+# Config Files
 .env
+.cargo/config
+.cargo/config.toml
 
 # User Settings
 .vscode
 .idea
+
+# Other
+Cargo.lock
