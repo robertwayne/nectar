@@ -34,6 +34,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("telnet server started on: {}", addr);
 
+    // Standard Tokio setup - we accept new connections and pass the
+    // stream off to our handler function where the real work happens.
     loop {
         while let Ok((stream, _)) = listener.accept().await {
             tokio::spawn(async move {
@@ -46,10 +48,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn handler(stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
-    // Wrap the stream with the TelnetCodec. All the encoding/decoding is
-    // handled by the codec, so you can now match for events!
+    // We construct a 'Frame', which is just a wrapper around the underlying
+    // stream that is decoded by the `nectar::TelnetCodec`.
     let mut frame = Framed::new(stream, TelnetCodec::new(1024));
 
+    // In a real application, you would want to handle Some(Err(_)) and None
+    // variants, but for this example we'll be succinct for simplicities sake.
     while let Some(Ok(msg)) = frame.next().await {
         match msg {
             // We'll keep it simple and only match against the Message event.
