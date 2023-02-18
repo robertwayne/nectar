@@ -9,14 +9,16 @@ popular MUD protocol extensions.
 
 ## Usage
 
-You must be using `tokio-utils` with the  `codec` feature enabled. In your
-stream handler, pass the `TelnetCodec` to the `Framed` struct along with your
-stream. See the **[Tokio
-docs](https://docs.rs/tokio-util/latest/tokio_util/codec/struct.Framed.html)**
-for more information on how this is used.
+Simply use ```cargo add nectar``` in your root project directory.
 
-In general, this is all you need to know. Your stream will now be interpreted as
-Telnet.
+You must also be using `tokio-utils` with the  `codec` feature enabled, as well as
+`tokio`.
+
+See the Tokio
+**[docs](https://docs.rs/tokio-util/latest/tokio_util/codec/struct.Framed.html)**
+if you wish to dive deeper into codecs. Essentially it is just a way to encode
+and decode the underlying TCP Stream in a structured manner - in this case, our
+structure being the Telnet protocol.
 
 ## Example
 
