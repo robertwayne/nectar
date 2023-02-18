@@ -4,10 +4,11 @@ authors = ["Rob Wagner <rob@sombia.com>"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Tokio Telnet codec with MUD protocol extension support."
+description = " Telnet protocol (RFC 854) implementation via a Tokio codec. "
 repository = "https://github.com/robertwayne/nectar"
 categories = ["network-programming"]
-keywords = ["blossom", "mud", "tokio", "telnet", "gmcp"]
+keywords = ["blossom", "mud", "tokio", "telnet", "gmcp", "rfc854"]
+readme = "README.md"
 
 [dependencies]
 bytes = "1"
