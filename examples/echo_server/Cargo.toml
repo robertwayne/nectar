@@ -1,0 +1,22 @@
+[package]
+name = "echo_server"
+authors = ["Rob Wagner <rob@sombia.com>"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# You would write this as nectar = { version "0.1" }
+nectar = { path = "../../" }
+
+# You could just use the futures crate here for access to both `SinkExt` &
+# `StreamExt` traits.
+futures-lite = { version = "1", default-features = false, features = ["std"] }
+futures-util = { version = "0.3", default-features = false, features = [
+    "sink",
+] }
+tokio = { version = "1", default-features = false, features = [
+    "macros",
+    "rt-multi-thread",
+    "net",
+] }
+tokio-util = { version = "0.7", default-features = false, features = ["codec"] }
