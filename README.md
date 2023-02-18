@@ -1,9 +1,7 @@
 # nectar
 
-`nectar` is a Tokio codec providing partial Telnet encoding/decoding with MUD
-protocol extension support. It was designed specifically for use with
-**[Blossom](https://github.com/robertwayne/blossom)**, but could be inserted
-into any Tokio-based application.
+`nectar` is a Tokio codec providing a partial Telnet protocol (RFC 854)
+implementation.
 
 Supports primary negotiation options: DO, DONT, WILL, WONT. Supports
 subnegotiation (NAWS, custom byte sequences). Aims to implement some of the
@@ -20,59 +18,53 @@ for more information on how this is used.
 In general, this is all you need to know. Your stream will now be interpreted as
 Telnet.
 
-```rust
-// Example of a simple connection loop running in Tokio.
-use anyhow::Result;
-use nectar::{event::TelnetEvent, TelnetCodec};
-use tokio_util::codec::Framed;
-use tokio::net::TcpStream;
+## Example
 
-async fn connection_loop(stream: TcpStream) {
-    let mut frame = Framed::new(stream, TelnetCodec::new());
+See the **[echo_server](/examples/echo_server)** directory for a working example
+with commented code. If you have cloned the `nectar` repository,  you can run
+the echo server with cargo and then connect with `telnet localhost 5000`.
+
+*Note: Make sure you check the dependencies in the example `Cargo.toml` file.*
+
+```rust
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
+    let listener = TcpListener::bind(addr).await?;
+
+    println!("telnet server started on: {}", addr);
 
     loop {
-        tokio::select! {
-            result = frame.next() => match result {
-                Some(msg) => {
-                    // Handle message
+        while let Ok((stream, _)) = listener.accept().await {
+            tokio::spawn(async move {
+                if let Err(e) = handler(stream).await {
+                    eprintln!("error: {}", e);
                 }
-                None => {
-                    break;
-                }
-            }
+            });
         }
     }
-
-    frame.send_message("Goodbye!".to_string()).await?;
 }
-```
 
-```rust
-// Example of sending an IAC (Interpret-As-Command) message.
-// You can see a more realistic example in the Blossom source code here: 
-// https://github.com/robertwayne/blossom/blob/dev/blossom/src/auth.rs#L287
-use anyhow::Result;
-use nectar::{event::TelnetEvent, TelnetCodec};
-use tokio_util::codec::Framed;
-use tokio::net::TcpStream;
+async fn handler(stream: TcpStream) -> Result<(), Box<dyn std::error::Error>> {
+    // Wrap the stream with the TelnetCodec. All the encoding/decoding is
+    // handled by the codec, so you can now match for events!
+    let mut frame = Framed::new(stream, TelnetCodec::new(1024));
 
-async fn get_password(frame: Framed<TcpStream, TelnetCodec>) -> Result<String> {
-    // Disable echo (eg. hide password input)
-    frame.send(TelnetEvent::Will(TelnetOption::Echo)).await?;
-
-    // Handle user input
-    let Some(msg) = frame.next().await else {
-        frame.send(TelnetEvent::Message("Invalid credentials.".to_string())).await?;
+    while let Some(Ok(msg)) = frame.next().await {
+        match msg {
+            // We'll keep it simple and only match against the Message event.
+            TelnetEvent::Message(string) => {
+                // Let's echo back what we received.
+                frame.send(TelnetEvent::Message(string)).await?;
+            }
+            _ => break,
+        }
     }
-
-    // Re-enable echo
-    frame.send(TelnetEvent::Wont(TelnetOption::Echo)).await?;
-
-    Ok(msg)
 }
 ```
 
-You can check out the [Blossom](https://github.com/robertwayne/blossom) source code for an example of `nectar` in use, in particular the [connection_handler.rs](https://github.com/robertwayne/blossom/blob/dev/blossom/src/connection_handler.rs) file.
+You can check out the **[Blossom](https://github.com/robertwayne/blossom)**
+source code for an example of `nectar` in a more complex, real-world scenario.
 
 ## License
 
