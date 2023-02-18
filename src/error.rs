@@ -1,3 +1,5 @@
+use std::error::Error;
+
 #[derive(Debug)]
 pub enum TelnetErrorType {
     Codec,
@@ -27,3 +29,5 @@ impl From<std::io::Error> for TelnetError {
         Self { kind: TelnetErrorType::Io, message: err.to_string() }
     }
 }
+
+impl Error for TelnetError {}
