@@ -28,7 +28,7 @@ impl TelnetEvent {
                 // the 5 is made up of the IAC SB, IAC SE, and the single byte option
                 5 + subnegotiation.len()
             }
-            _ => 1,
+            _ => 5,
         }
     }
 }
