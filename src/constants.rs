@@ -78,7 +78,6 @@ pub const MXP: u8 = 91;
 /// Generic Mud Communication Protocol - https://www.gammon.com.au/gmcp
 pub const GMCP: u8 = 201;
 
-
 /// CHARSET subnegotiation commands
 pub const CHARSET_REQUEST: u8 = 1;
 pub const CHARSET_ACCEPTED: u8 = 2;

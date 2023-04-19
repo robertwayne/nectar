@@ -12,7 +12,7 @@ pub mod constants;
 pub mod error;
 /// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
 pub mod event;
-/// Telnet options such as Echo, GoAhead, and SupressGoAhead.
+/// Telnet options such as Echo, GoAhead, and SuppressGoAhead.
 pub mod option;
 /// Telnet subnegotiation options.
 pub mod subnegotiation;
@@ -23,13 +23,15 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
 use crate::{
-    constants::{DO, DONT, IAC, NAWS, NOP, SB, SE, WILL, WONT},
+    constants::{
+        CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
+        DONT, IAC, NAWS, NOP, SB, SE, WILL, WONT,
+    },
     error::TelnetError,
     event::TelnetEvent,
     option::TelnetOption,
     subnegotiation::SubnegotiationType,
 };
-use crate::constants::{CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED};
 
 type Result<T> = std::result::Result<T, TelnetError>;
 
@@ -154,10 +156,8 @@ fn decode_charset(subvec: &[u8]) -> Option<TelnetEvent> {
             }
 
             let separator = subvec[1];
-            let charsets: Vec<_> = subvec[2..]
-                .split(|&x| x == separator)
-                .map(|x| Bytes::from(x.to_vec()))
-                .collect();
+            let charsets: Vec<_> =
+                subvec[2..].split(|&x| x == separator).map(|x| Bytes::from(x.to_vec())).collect();
 
             if charsets.len() == 0 {
                 return None;
@@ -206,9 +206,7 @@ fn decode_subnegotiation_end(
     } else {
         let opt = match option {
             NAWS => decode_negotiate_about_window_size(&subvec),
-            CHARSET => {
-                decode_charset(&subvec)
-            }
+            CHARSET => decode_charset(&subvec),
             _ => Some(decode_unknown(option, subvec)),
         };
 
