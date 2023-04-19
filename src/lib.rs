@@ -199,8 +199,6 @@ fn decode_subnegotiation_end(
     subvec: Vec<u8>,
     option: u8,
 ) -> Option<TelnetEvent> {
-    // let _ = buffer.split_at(2);
-
     if invalid {
         None
     } else {
