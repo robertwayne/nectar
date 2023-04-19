@@ -28,6 +28,8 @@ impl TelnetEvent {
                 // the 5 is made up of the IAC SB, IAC SE, and the single byte option
                 5 + subnegotiation.len()
             }
+            TelnetEvent::Character(_) => 1,
+            TelnetEvent::Do(_) | TelnetEvent::Will(_) | TelnetEvent::Dont(_) | TelnetEvent::Wont(_) => 6,
             _ => 5,
         }
     }
