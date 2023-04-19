@@ -51,3 +51,39 @@ pub const DO: u8 = 253;
 // that you are no longer expecting the other party to perform, the indicated
 // option.
 pub const DONT: u8 = 254;
+
+//
+// Various mud-specific options
+//
+
+/// EOR - End of Record - https://tintin.mudhalla.net/protocols/eor/
+pub const TELOPT_EOR: u8 = 25; // the telnet option for negotiation
+pub const EOR: u8 = 239; // the byte to send to indicate end of record
+
+/// CHARSET - https://tools.ietf.org/html/rfc2066
+pub const CHARSET: u8 = 42;
+
+/// Mud Server Status Protocol - https://mudhalla.net/tintin/protocols/mssp/
+pub const MSSP: u8 = 70;
+
+/// Mud Client Compression Protocol (v2) - https://www.gammon.com.au/mccp/protocol.html
+pub const MCCP2: u8 = 86;
+
+/// Mud Sound Protocol - https://www.zuggsoft.com/zmud/msp.htm
+pub const MSP: u8 = 90;
+
+/// Mud eXtension Protocol - https://www.zuggsoft.com/zmud/mxp.htm
+pub const MXP: u8 = 91;
+
+/// Generic Mud Communication Protocol - https://www.gammon.com.au/gmcp
+pub const GMCP: u8 = 201;
+
+
+/// CHARSET subnegotiation commands
+pub const CHARSET_REQUEST: u8 = 1;
+pub const CHARSET_ACCEPTED: u8 = 2;
+pub const CHARSET_REJECTED: u8 = 3;
+pub const CHARSET_TTABLE_IS: u8 = 4;
+pub const CHARSET_TTABLE_REJECTED: u8 = 5;
+pub const CHARSET_TTABLE_ACK: u8 = 6;
+pub const CHARSET_TTABLE_NAK: u8 = 7;

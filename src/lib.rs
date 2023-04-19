@@ -29,6 +29,7 @@ use crate::{
     option::TelnetOption,
     subnegotiation::SubnegotiationType,
 };
+use crate::constants::{CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED};
 
 type Result<T> = std::result::Result<T, TelnetError>;
 
@@ -141,6 +142,46 @@ fn decode_negotiate_about_window_size(subvec: &[u8]) -> Option<TelnetEvent> {
     }
 }
 
+fn decode_charset(subvec: &[u8]) -> Option<TelnetEvent> {
+    if subvec.len() == 0 {
+        return None;
+    }
+
+    match subvec[0] {
+        CHARSET_REQUEST => {
+            if subvec.len() == 1 {
+                return None;
+            }
+
+            let separator = subvec[1];
+            let charsets: Vec<_> = subvec[2..]
+                .split(|&x| x == separator)
+                .map(|x| Bytes::from(x.to_vec()))
+                .collect();
+
+            if charsets.len() == 0 {
+                return None;
+            }
+
+            let result = SubnegotiationType::CharsetRequest(charsets);
+            Some(TelnetEvent::Subnegotiate(result))
+        }
+        CHARSET_ACCEPTED => {
+            let result = SubnegotiationType::CharsetAccepted(Bytes::from(subvec[1..].to_vec()));
+            Some(TelnetEvent::Subnegotiate(result))
+        }
+        CHARSET_REJECTED => {
+            let result = SubnegotiationType::CharsetRejected;
+            Some(TelnetEvent::Subnegotiate(result))
+        }
+        CHARSET_TTABLE_REJECTED => {
+            let result = SubnegotiationType::CharsetTTableRejected;
+            Some(TelnetEvent::Subnegotiate(result))
+        }
+        _ => None,
+    }
+}
+
 fn decode_unknown(option: u8, subvec: Vec<u8>) -> TelnetEvent {
     TelnetEvent::Subnegotiate(SubnegotiationType::Unknown(option.into(), Bytes::from(subvec)))
 }
@@ -158,15 +199,24 @@ fn decode_subnegotiation_end(
     subvec: Vec<u8>,
     option: u8,
 ) -> Option<TelnetEvent> {
-    let _ = buffer.split_at(2);
+    // let _ = buffer.split_at(2);
 
     if invalid {
         None
     } else {
-        match option {
+        let opt = match option {
             NAWS => decode_negotiate_about_window_size(&subvec),
+            CHARSET => {
+                decode_charset(&subvec)
+            }
             _ => Some(decode_unknown(option, subvec)),
+        };
+
+        if let Some(event) = &opt {
+            buffer.advance(event.len());
         }
+
+        opt
     }
 }
 
@@ -298,6 +348,37 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
             buffer.put_u16(width);
             buffer.put_u16(height);
             buffer.extend([IAC, SE]);
+        }
+        SubnegotiationType::CharsetRequest(charsets) => {
+            let charset_lens = charsets.iter().map(|c| c.len()).sum::<usize>();
+            let spaces = charsets.len().saturating_sub(1);
+
+            buffer.reserve(7 + charset_lens + spaces);
+            let sep = ' ' as u8;
+            buffer.extend([IAC, SB, CHARSET, CHARSET_REQUEST, sep]);
+
+            for (i, charset) in charsets.iter().enumerate() {
+                buffer.extend(charset);
+                if i < charsets.len() - 1 {
+                    buffer.put_u8(sep);
+                }
+            }
+
+            buffer.extend([IAC, SE]);
+        }
+        SubnegotiationType::CharsetAccepted(charset) => {
+            buffer.reserve(6 + charset.len());
+            buffer.extend([IAC, SB, CHARSET, CHARSET_ACCEPTED]);
+            buffer.extend(charset);
+            buffer.extend([IAC, SE]);
+        }
+        SubnegotiationType::CharsetRejected => {
+            buffer.reserve(6);
+            buffer.extend([IAC, SB, CHARSET, CHARSET_REJECTED, IAC, SE]);
+        }
+        SubnegotiationType::CharsetTTableRejected => {
+            buffer.reserve(6);
+            buffer.extend([IAC, SB, CHARSET, CHARSET_TTABLE_REJECTED, IAC, SE]);
         }
         SubnegotiationType::Unknown(option, bytes) => {
             let mut bytes_buffer_size = bytes.len() + 5;

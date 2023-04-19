@@ -19,6 +19,20 @@ pub enum TelnetEvent {
     Nop,
 }
 
+impl TelnetEvent {
+    /// How many bytes does this event take up?
+    pub fn len(&self) -> usize {
+        match self {
+            TelnetEvent::Message(message) => message.len(),
+            TelnetEvent::Subnegotiate(subnegotiation) => {
+                // the 5 is made up of the IAC SB, IAC SE, and the single byte option
+                5 + subnegotiation.len()
+            }
+            _ => 1,
+        }
+    }
+}
+
 impl From<TelnetEvent> for u8 {
     fn from(event: TelnetEvent) -> Self {
         match event {
