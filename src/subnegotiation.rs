@@ -27,11 +27,15 @@ impl SubnegotiationType {
                 for bytes in vec {
                     len += bytes.len();
                 }
-                len
+                // add one more for the subnegotation sub-option (i.e. CHARSET_REQUEST)
+                len + 1
             }
-            SubnegotiationType::CharsetAccepted(charset) => charset.len(),
-            SubnegotiationType::CharsetRejected => 0,
-            SubnegotiationType::CharsetTTableRejected => 0,
+            SubnegotiationType::CharsetAccepted(charset) => {
+                // add one more for the subnegotation sub-option (i.e. CHARSET_ACCEPTED)
+                charset.len() + 1
+            },
+            SubnegotiationType::CharsetRejected => 1,
+            SubnegotiationType::CharsetTTableRejected => 1,
             SubnegotiationType::Unknown(_, bytes) => bytes.len(),
         }
     }
