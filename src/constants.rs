@@ -52,10 +52,6 @@ pub const DO: u8 = 253;
 // option.
 pub const DONT: u8 = 254;
 
-//
-// Various mud-specific options
-//
-
 /// EOR - End of Record - https://tintin.mudhalla.net/protocols/eor/
 pub const TELOPT_EOR: u8 = 25; // the telnet option for negotiation
 pub const EOR: u8 = 239; // the byte to send to indicate end of record
@@ -66,7 +62,8 @@ pub const CHARSET: u8 = 42;
 /// Mud Server Status Protocol - https://mudhalla.net/tintin/protocols/mssp/
 pub const MSSP: u8 = 70;
 
-/// Mud Client Compression Protocol (v2) - https://www.gammon.com.au/mccp/protocol.html
+/// Mud Client Compression Protocol (v2) -
+/// https://www.gammon.com.au/mccp/protocol.html
 pub const MCCP2: u8 = 86;
 
 /// Mud Sound Protocol - https://www.zuggsoft.com/zmud/msp.htm
