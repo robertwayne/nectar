@@ -20,7 +20,7 @@ pub enum TelnetEvent {
 }
 
 impl TelnetEvent {
-    /// How many bytes does this event take up?
+    /// Returns the length (in bytes) of the event.
     pub fn len(&self) -> usize {
         match self {
             TelnetEvent::Message(message) => message.len(),
@@ -29,9 +29,17 @@ impl TelnetEvent {
                 5 + subnegotiation.len()
             }
             TelnetEvent::Character(_) => 1,
-            TelnetEvent::Do(_) | TelnetEvent::Will(_) | TelnetEvent::Dont(_) | TelnetEvent::Wont(_) => 6,
+            TelnetEvent::Do(_)
+            | TelnetEvent::Will(_)
+            | TelnetEvent::Dont(_)
+            | TelnetEvent::Wont(_) => 6,
             _ => 5,
         }
+    }
+
+    /// Returns true if the event has a length (in bytes) of 0.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
