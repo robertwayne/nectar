@@ -429,3 +429,223 @@ fn encode_message(message: String, buffer: &mut BytesMut) {
         buffer.extend([b'\r', b'\n']);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod test_decode {
+        use super::*;
+
+        fn setup() -> (TelnetCodec, BytesMut) {
+            let codec = TelnetCodec::new(16);
+            let buffer = BytesMut::new();
+            (codec, buffer)
+        }
+
+        #[test]
+        fn test_sga_true() {
+            let (mut codec, mut buffer) = setup();
+            codec.sga = true;
+
+            // when both the codec's internal buffer, and the input buffer are empty, there's nothing going on.
+            assert!(codec.decode(&mut buffer).unwrap().is_none());
+
+            // when the codec's internal buffer is not empty, clear it out and send it as a message
+            codec.buffer.extend([b'h', b'i', b'y', b'a', b' ', 0xf0, 0x9f, 0x98, 0x81]);
+            assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Message("hiya 😁".to_string()));
+            assert!(codec.buffer.is_empty());
+
+            // when the codec's internal buffer is empty, and the input buffer has data, decode as a SuppressGoAhead
+            buffer.extend([IAC]);
+            assert!(codec.decode(&mut buffer).unwrap().is_none());
+            assert!(codec.buffer.is_empty());
+            assert_eq!(buffer.as_ref(), &[IAC]);
+            buffer.extend([IAC]); // Add a second, as two are interpreted as a single IAC
+            assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Character(IAC));
+            assert!(codec.buffer.is_empty());
+            assert!(buffer.is_empty());
+
+            // Ignore IAC followed by non-IAC
+            buffer.extend([IAC, WILL]);
+            assert!(codec.decode(&mut buffer).unwrap().is_none());
+            assert!(codec.buffer.is_empty());
+            assert_eq!(buffer.as_ref(), &[IAC, WILL]);
+
+            // Ignore non-IAC followed by IAC
+            buffer.extend([WILL, IAC]);
+            assert!(codec.decode(&mut buffer).unwrap().is_none());
+            assert!(codec.buffer.is_empty());
+            assert_eq!(buffer.as_ref(), &[IAC, WILL, WILL, IAC]); // previous stuff is still there
+        }
+
+        mod test_sga_false {
+            use super::*;
+
+            #[test]
+            fn test_buffer_starts_with_newline() {
+                let (mut codec, mut buffer) = setup();
+
+                codec.buffer.extend([b'c', b'o', b'o', b'l', b'!', b'\r']);
+                buffer.extend([b'\n', b'y', b'e', b's']);
+
+                // when the newline completes a \r\n sequence, send the contents
+                // of the codec's internal buffer as a message
+                assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Message("cool!".to_string()));
+                assert!(codec.buffer.is_empty());
+                assert_eq!(buffer.as_ref(), &[b'y', b'e', b's']);
+
+                // When the character does not complete a \r\n sequence,
+                // and is not IAC, append it to the codec's internal buffer, but
+                // do not remove it from the input buffer.
+                assert_eq!(codec.decode(&mut buffer).unwrap(), None);
+                assert_eq!(&codec.buffer, &[b'y', b'e', b's']);
+                assert_eq!(buffer.as_ref(), &[b'y', b'e', b's']);
+            }
+
+            mod test_iac {
+                use crate::constants::ECHO;
+                use super::*;
+
+                #[test]
+                fn test_double_iac() {
+                    let (mut codec, mut buffer) = setup();
+
+                    // a doubled IAC on the wire is interpreted as a single byte of data
+                    buffer.extend([IAC, IAC]);
+                    assert_eq!(codec.decode(&mut buffer).unwrap(), None);
+                    assert_eq!(&codec.buffer, &[IAC]);
+                    assert_eq!(buffer.as_ref(), &[IAC, IAC]);
+                }
+
+                #[test]
+                fn test_do() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, DO, ECHO]);
+                    assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Do(TelnetOption::Echo));
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_dont() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, DONT, ECHO]);
+                    assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Dont(TelnetOption::Echo));
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_will() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, WILL, ECHO]);
+                    assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Will(TelnetOption::Echo));
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_wont() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, WONT, ECHO]);
+                    assert_eq!(codec.decode(&mut buffer).unwrap().unwrap(), TelnetEvent::Wont(TelnetOption::Echo));
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_nop() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, NOP]);
+                    assert_eq!(codec.decode(&mut buffer).unwrap(), None);
+                    assert!(codec.buffer.is_empty());
+                    assert_eq!(buffer.as_ref(), &[IAC, NOP]);
+                }
+
+                #[test]
+                fn test_sb_naws() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, SB, NAWS, 0x00, 0x50, 0x00, 0x50, IAC, SE]);
+                    assert_eq!(
+                        codec.decode(&mut buffer).unwrap().unwrap(),
+                        TelnetEvent::Subnegotiate(SubnegotiationType::WindowSize(80, 80))
+                    );
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_sb_charset_request() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, SB, CHARSET, CHARSET_REQUEST, b' ']);
+                    buffer.extend("UTF-8".bytes());
+                    buffer.put_u8(b' ');
+                    buffer.extend("US-ASCII".bytes());
+                    buffer.extend([IAC, SE]);
+
+                    assert_eq!(
+                        codec.decode(&mut buffer).unwrap().unwrap(),
+                        TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRequest(vec![
+                            Bytes::from("UTF-8"),
+                            Bytes::from("US-ASCII")
+                        ]))
+                    );
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_sb_charset_accepted() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, SB, CHARSET, CHARSET_ACCEPTED]);
+                    buffer.extend("UTF-8".bytes());
+                    buffer.extend([IAC, SE]);
+
+                    assert_eq!(
+                        codec.decode(&mut buffer).unwrap().unwrap(),
+                        TelnetEvent::Subnegotiate(SubnegotiationType::CharsetAccepted(Bytes::from("UTF-8")))
+                    );
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_sb_charset_rejected() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, SB, CHARSET, CHARSET_REJECTED, IAC, SE]);
+
+                    assert_eq!(
+                        codec.decode(&mut buffer).unwrap().unwrap(),
+                        TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRejected)
+                    );
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+
+                #[test]
+                fn test_sb_charset_ttable_rejected() {
+                    let (mut codec, mut buffer) = setup();
+
+                    buffer.extend([IAC, SB, CHARSET, CHARSET_TTABLE_REJECTED, IAC, SE]);
+
+                    assert_eq!(
+                        codec.decode(&mut buffer).unwrap().unwrap(),
+                        TelnetEvent::Subnegotiate(SubnegotiationType::CharsetTTableRejected)
+                    );
+                    assert!(codec.buffer.is_empty());
+                    assert!(buffer.is_empty());
+                }
+            }
+        }
+    }
+}
