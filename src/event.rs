@@ -25,7 +25,8 @@ impl TelnetEvent {
         match self {
             TelnetEvent::Message(message) => message.len(),
             TelnetEvent::Subnegotiate(subnegotiation) => {
-                // the 5 is made up of the IAC SB, IAC SE, and the single byte option
+                // the 5 is made up of the IAC SB, IAC SE, and the single byte
+                // option
                 5 + subnegotiation.len()
             }
             TelnetEvent::Character(_) => 1,

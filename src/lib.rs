@@ -448,10 +448,12 @@ mod tests {
             let (mut codec, mut buffer) = setup();
             codec.sga = true;
 
-            // when both the codec's internal buffer, and the input buffer are empty, there's nothing going on.
+            // when both the codec's internal buffer, and the input buffer are
+            // empty, there's nothing going on.
             assert!(codec.decode(&mut buffer).unwrap().is_none());
 
-            // when the codec's internal buffer is not empty, clear it out and send it as a message
+            // when the codec's internal buffer is not empty, clear it out and
+            // send it as a message
             codec.buffer.extend([b'h', b'i', b'y', b'a', b' ', 0xf0, 0x9f, 0x98, 0x81]);
             assert_eq!(
                 codec.decode(&mut buffer).unwrap().unwrap(),
@@ -459,7 +461,8 @@ mod tests {
             );
             assert!(codec.buffer.is_empty());
 
-            // when the codec's internal buffer is empty, and the input buffer has data, decode as a SuppressGoAhead
+            // when the codec's internal buffer is empty, and the input buffer
+            // has data, decode as a SuppressGoAhead
             buffer.extend([IAC]);
             assert!(codec.decode(&mut buffer).unwrap().is_none());
             assert!(codec.buffer.is_empty());
@@ -501,9 +504,9 @@ mod tests {
                 assert!(codec.buffer.is_empty());
                 assert_eq!(buffer.as_ref(), &[b'y', b'e', b's']);
 
-                // When the character does not complete a \r\n sequence,
-                // and is not IAC, append it to the codec's internal buffer, but
-                // do not remove it from the input buffer.
+                // When the character does not complete a \r\n sequence, and is
+                // not IAC, append it to the codec's internal buffer, but do not
+                // remove it from the input buffer.
                 assert_eq!(codec.decode(&mut buffer).unwrap(), None);
                 assert_eq!(&codec.buffer, &[b'y', b'e', b's']);
                 assert_eq!(buffer.as_ref(), &[b'y', b'e', b's']);
@@ -517,7 +520,8 @@ mod tests {
                 fn test_double_iac() {
                     let (mut codec, mut buffer) = setup();
 
-                    // a doubled IAC on the wire is interpreted as a single byte of data
+                    // a doubled IAC on the wire is interpreted as a single byte
+                    // of data
                     buffer.extend([IAC, IAC]);
                     assert_eq!(codec.decode(&mut buffer).unwrap(), None);
                     assert_eq!(&codec.buffer, &[IAC]);

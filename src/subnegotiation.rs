@@ -2,8 +2,8 @@ use bytes::Bytes;
 
 use crate::option::TelnetOption;
 
-/// Represents all Telnet subnegotiation events supported by Nectar. See
-/// `<https://tools.ietf.org/html/rfc854>` for more information.
+/// Represents all Telnet subnegotiation events supported by Nectar.
+/// See `<https://tools.ietf.org/html/rfc854>` for more information.
 #[derive(Debug, PartialEq, Eq)]
 pub enum SubnegotiationType {
     WindowSize(u16, u16),
@@ -15,9 +15,9 @@ pub enum SubnegotiationType {
 }
 
 impl SubnegotiationType {
-    /// Returns the length (in bytes) of the subnegotiation data. This _does
-    /// not_ include the IAC SB and IAC SE bytes, _nor_ the single byte that
-    /// represents the option.
+    /// Returns the length (in bytes) of the subnegotiation data.
+    /// This _does not_ include the IAC SB and IAC SE bytes, _nor_ the single
+    /// byte that represents the option.
     pub fn len(&self) -> usize {
         match self {
             SubnegotiationType::WindowSize(_, _) => 4,
