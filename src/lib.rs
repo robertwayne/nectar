@@ -89,6 +89,7 @@ impl Encoder<TelnetEvent> for TelnetCodec {
             TelnetEvent::Wont(option) => encode_negotiate(WONT, option, buffer),
             TelnetEvent::Subnegotiate(sb_type) => encode_sb(sb_type, buffer),
             TelnetEvent::Message(msg) => encode_message(msg, buffer),
+            TelnetEvent::RawMessage(msg) => encode_raw_message(msg, buffer),
             _ => {}
         }
 
@@ -405,7 +406,7 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
     }
 }
 
-fn encode_message(message: String, buffer: &mut BytesMut) {
+fn encode_raw_message(message: String, buffer: &mut BytesMut) {
     let bytes = Bytes::from(message);
     let mut bytes_buffer_size = bytes.len();
 
@@ -423,6 +424,10 @@ fn encode_message(message: String, buffer: &mut BytesMut) {
         }
         buffer.put_u8(*byte);
     }
+}
+
+fn encode_message(message: String, buffer: &mut BytesMut) {
+    encode_raw_message(message, buffer);
 
     if !buffer.ends_with(b"\r\n") {
         buffer.reserve(2);

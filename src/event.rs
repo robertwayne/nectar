@@ -10,6 +10,7 @@ use crate::{
 pub enum TelnetEvent {
     Character(u8),
     Message(String),
+    RawMessage(String),
     Do(TelnetOption),
     Will(TelnetOption),
     Dont(TelnetOption),
@@ -24,6 +25,7 @@ impl TelnetEvent {
     pub fn len(&self) -> usize {
         match self {
             TelnetEvent::Message(message) => message.len(),
+            TelnetEvent::RawMessage(message) => message.len(),
             TelnetEvent::Subnegotiate(subnegotiation) => {
                 // the 5 is made up of the IAC SB, IAC SE, and the single byte
                 // option
@@ -47,7 +49,7 @@ impl TelnetEvent {
 impl From<TelnetEvent> for u8 {
     fn from(event: TelnetEvent) -> Self {
         match event {
-            TelnetEvent::Message(_) => 0x00,
+            TelnetEvent::Message(_) | TelnetEvent::RawMessage(_) => 0x00,
             TelnetEvent::Do(_) => DO,
             TelnetEvent::Will(_) => WILL,
             TelnetEvent::Dont(_) => DONT,
