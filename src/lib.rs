@@ -679,8 +679,8 @@ mod tests {
     }
 
     mod test_encode {
-        use crate::constants::ECHO;
         use super::*;
+        use crate::constants::ECHO;
 
         #[test]
         fn test_message() {
@@ -733,17 +733,27 @@ mod tests {
         #[test]
         fn test_sb_naws() {
             let (mut codec, mut buffer) = setup();
-            codec.encode(TelnetEvent::Subnegotiate(SubnegotiationType::WindowSize(80, 80)), &mut buffer).unwrap();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::WindowSize(80, 80)),
+                    &mut buffer,
+                )
+                .unwrap();
             assert_eq!(buffer.as_ref(), &[IAC, SB, NAWS, 0x00, 0x50, 0x00, 0x50, IAC, SE]);
         }
 
         #[test]
         fn test_sb_charset_request() {
             let (mut codec, mut buffer) = setup();
-            codec.encode(TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRequest(vec![
-                Bytes::from("UTF-8"),
-                Bytes::from("US-ASCII")
-            ])), &mut buffer).unwrap();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRequest(vec![
+                        Bytes::from("UTF-8"),
+                        Bytes::from("US-ASCII"),
+                    ])),
+                    &mut buffer,
+                )
+                .unwrap();
             assert_eq!(&buffer.as_ref()[0..=4], &[IAC, SB, CHARSET, CHARSET_REQUEST, b' ']);
             assert_eq!(&buffer.as_ref()[5..], b"UTF-8 US-ASCII\xFF\xF0" as &[u8]);
         }
@@ -751,7 +761,14 @@ mod tests {
         #[test]
         fn test_sb_charset_accepted() {
             let (mut codec, mut buffer) = setup();
-            codec.encode(TelnetEvent::Subnegotiate(SubnegotiationType::CharsetAccepted(Bytes::from("UTF-8"))), &mut buffer).unwrap();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::CharsetAccepted(Bytes::from(
+                        "UTF-8",
+                    ))),
+                    &mut buffer,
+                )
+                .unwrap();
             assert_eq!(&buffer.as_ref()[0..=3], &[IAC, SB, CHARSET, CHARSET_ACCEPTED]);
             assert_eq!(&buffer.as_ref()[4..], b"UTF-8\xFF\xF0" as &[u8]);
         }
@@ -759,14 +776,21 @@ mod tests {
         #[test]
         fn test_sb_charset_rejected() {
             let (mut codec, mut buffer) = setup();
-            codec.encode(TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRejected), &mut buffer).unwrap();
+            codec
+                .encode(TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRejected), &mut buffer)
+                .unwrap();
             assert_eq!(buffer.as_ref(), &[IAC, SB, CHARSET, CHARSET_REJECTED, IAC, SE]);
         }
 
         #[test]
         fn test_sb_charset_ttable_rejected() {
             let (mut codec, mut buffer) = setup();
-            codec.encode(TelnetEvent::Subnegotiate(SubnegotiationType::CharsetTTableRejected), &mut buffer).unwrap();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::CharsetTTableRejected),
+                    &mut buffer,
+                )
+                .unwrap();
             assert_eq!(buffer.as_ref(), &[IAC, SB, CHARSET, CHARSET_TTABLE_REJECTED, IAC, SE]);
         }
     }
