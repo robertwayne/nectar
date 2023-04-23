@@ -517,6 +517,22 @@ mod tests {
                 assert_eq!(buffer.as_ref(), &[b'y', b'e', b's']);
             }
 
+            #[test]
+            fn test_overflow() {
+                let (mut codec, mut buffer) = setup();
+
+                buffer.extend([b'a'; 10]);
+                buffer.extend([b'z'; 10]);
+
+                assert!(codec.decode(&mut buffer).unwrap().is_none());
+
+                assert_eq!(&codec.buffer[..=9], &[b'a'; 10]);
+                assert_eq!(&codec.buffer[10..], &[b'z'; 6]);
+
+                assert_eq!(&buffer[..=9], &[b'a'; 10]);
+                assert_eq!(&buffer[10..], &[b'z'; 10]);
+            }
+
             mod test_iac {
                 use super::*;
                 use crate::constants::ECHO;
