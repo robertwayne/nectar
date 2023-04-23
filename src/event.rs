@@ -9,7 +9,11 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum TelnetEvent {
     Character(u8),
+    /// A message that guarantees it ends with `\r\n`.
     Message(String),
+    /// A message that does not guarantee it ends with `\r\n`. Allows for
+    /// sending messages without enforced newlines. Used for outgoing
+    /// messages only.
     RawMessage(String),
     Do(TelnetOption),
     Will(TelnetOption),
