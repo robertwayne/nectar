@@ -89,6 +89,7 @@ impl Encoder<TelnetEvent> for TelnetCodec {
             TelnetEvent::Wont(option) => encode_negotiate(WONT, option, buffer),
             TelnetEvent::Subnegotiate(sb_type) => encode_sb(sb_type, buffer),
             TelnetEvent::Message(msg) => encode_message(msg, buffer),
+            TelnetEvent::RawMessage(msg) => encode_raw_message(msg, buffer),
             _ => {}
         }
 
@@ -405,7 +406,7 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
     }
 }
 
-fn encode_message(message: String, buffer: &mut BytesMut) {
+fn encode_raw_message(message: String, buffer: &mut BytesMut) {
     let bytes = Bytes::from(message);
     let mut bytes_buffer_size = bytes.len();
 
@@ -423,6 +424,10 @@ fn encode_message(message: String, buffer: &mut BytesMut) {
         }
         buffer.put_u8(*byte);
     }
+}
+
+fn encode_message(message: String, buffer: &mut BytesMut) {
+    encode_raw_message(message, buffer);
 
     if !buffer.ends_with(b"\r\n") {
         buffer.reserve(2);
@@ -434,14 +439,14 @@ fn encode_message(message: String, buffer: &mut BytesMut) {
 mod tests {
     use super::*;
 
+    fn setup() -> (TelnetCodec, BytesMut) {
+        let codec = TelnetCodec::new(16);
+        let buffer = BytesMut::new();
+        (codec, buffer)
+    }
+
     mod test_decode {
         use super::*;
-
-        fn setup() -> (TelnetCodec, BytesMut) {
-            let codec = TelnetCodec::new(16);
-            let buffer = BytesMut::new();
-            (codec, buffer)
-        }
 
         #[test]
         fn test_sga_true() {
@@ -510,6 +515,22 @@ mod tests {
                 assert_eq!(codec.decode(&mut buffer).unwrap(), None);
                 assert_eq!(&codec.buffer, &[b'y', b'e', b's']);
                 assert_eq!(buffer.as_ref(), &[b'y', b'e', b's']);
+            }
+
+            #[test]
+            fn test_overflow() {
+                let (mut codec, mut buffer) = setup();
+
+                buffer.extend([b'a'; 10]);
+                buffer.extend([b'z'; 10]);
+
+                assert!(codec.decode(&mut buffer).unwrap().is_none());
+
+                assert_eq!(&codec.buffer[..=9], &[b'a'; 10]);
+                assert_eq!(&codec.buffer[10..], &[b'z'; 6]);
+
+                assert_eq!(&buffer[..=9], &[b'a'; 10]);
+                assert_eq!(&buffer[10..], &[b'z'; 10]);
             }
 
             mod test_iac {
@@ -670,6 +691,123 @@ mod tests {
                     assert!(buffer.is_empty());
                 }
             }
+        }
+    }
+
+    mod test_encode {
+        use super::*;
+        use crate::constants::ECHO;
+
+        #[test]
+        fn test_message() {
+            let (mut codec, mut buffer) = setup();
+            codec.encode(TelnetEvent::Message("hiya 😁".to_string()), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), b"hiya \xF0\x9F\x98\x81\r\n");
+
+            let (mut codec, mut buffer) = setup();
+            let msg = "this message is larger than the max buffer length".to_string();
+            assert!(msg.len() > codec.max_buffer_length);
+            codec.encode(TelnetEvent::Message(msg), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), b"this message is larger than the max buffer length\r\n");
+        }
+
+        #[test]
+        fn test_raw_message() {
+            let (mut codec, mut buffer) = setup();
+            codec.encode(TelnetEvent::RawMessage("hiya 😁".to_string()), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), b"hiya \xF0\x9F\x98\x81");
+        }
+
+        #[test]
+        fn test_do() {
+            let (mut codec, mut buffer) = setup();
+            codec.encode(TelnetEvent::Do(TelnetOption::Echo), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, DO, ECHO]);
+        }
+
+        #[test]
+        fn test_dont() {
+            let (mut codec, mut buffer) = setup();
+            codec.encode(TelnetEvent::Dont(TelnetOption::Echo), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, DONT, ECHO]);
+        }
+
+        #[test]
+        fn test_will() {
+            let (mut codec, mut buffer) = setup();
+            codec.encode(TelnetEvent::Will(TelnetOption::Echo), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, WILL, ECHO]);
+        }
+
+        #[test]
+        fn test_wont() {
+            let (mut codec, mut buffer) = setup();
+            codec.encode(TelnetEvent::Wont(TelnetOption::Echo), &mut buffer).unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, WONT, ECHO]);
+        }
+
+        #[test]
+        fn test_sb_naws() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::WindowSize(80, 80)),
+                    &mut buffer,
+                )
+                .unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, SB, NAWS, 0x00, 0x50, 0x00, 0x50, IAC, SE]);
+        }
+
+        #[test]
+        fn test_sb_charset_request() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRequest(vec![
+                        Bytes::from("UTF-8"),
+                        Bytes::from("US-ASCII"),
+                    ])),
+                    &mut buffer,
+                )
+                .unwrap();
+            assert_eq!(&buffer.as_ref()[0..=4], &[IAC, SB, CHARSET, CHARSET_REQUEST, b' ']);
+            assert_eq!(&buffer.as_ref()[5..], b"UTF-8 US-ASCII\xFF\xF0" as &[u8]);
+        }
+
+        #[test]
+        fn test_sb_charset_accepted() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::CharsetAccepted(Bytes::from(
+                        "UTF-8",
+                    ))),
+                    &mut buffer,
+                )
+                .unwrap();
+            assert_eq!(&buffer.as_ref()[0..=3], &[IAC, SB, CHARSET, CHARSET_ACCEPTED]);
+            assert_eq!(&buffer.as_ref()[4..], b"UTF-8\xFF\xF0" as &[u8]);
+        }
+
+        #[test]
+        fn test_sb_charset_rejected() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(TelnetEvent::Subnegotiate(SubnegotiationType::CharsetRejected), &mut buffer)
+                .unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, SB, CHARSET, CHARSET_REJECTED, IAC, SE]);
+        }
+
+        #[test]
+        fn test_sb_charset_ttable_rejected() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::CharsetTTableRejected),
+                    &mut buffer,
+                )
+                .unwrap();
+            assert_eq!(buffer.as_ref(), &[IAC, SB, CHARSET, CHARSET_TTABLE_REJECTED, IAC, SE]);
         }
     }
 }
