@@ -1,18 +1,13 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
-// RFC 854 `<https://tools.ietf.org/html/rfc854>`
-//
-// Originally based off of https://github.com/jtenner/telnet_codec, which has
-// been archived.
-
 /// Various byte or byte sequences used in the Telnet protocol.
 pub mod constants;
 /// Codec and Io errors that may occur while processing Telnet events.
 pub mod error;
 /// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
 pub mod event;
-/// Telnet options such as Echo, GoAhead, and SuppressGoAhead.
+/// Telnet options such as `Echo`, `GoAhead`, and `SuppressGoAhead`.
 pub mod option;
 /// Telnet subnegotiation options.
 pub mod subnegotiation;
@@ -36,10 +31,12 @@ use crate::{
 type Result<T> = std::result::Result<T, TelnetError>;
 
 /// Implements a Tokio codec for the Telnet protocol, along with MUD-specific
-/// extension protocols such as GMCP. You should never have to interact with
-/// this directly.
+/// extension protocols such as GMCP.
+///
+/// You should never have to interact with this directly.
 #[derive(Debug)]
 pub struct TelnetCodec {
+    /// Whether or not the client has enabled the Suppress Go Ahead option.
     pub sga: bool,
     max_buffer_length: usize,
     buffer: Vec<u8>,
