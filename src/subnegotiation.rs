@@ -1,6 +1,6 @@
-use bytes::Bytes;
 use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
-use crate::linemode::SlcFunction;
+use crate::linemode::{Dispatch, SlcFunction};
+use bytes::Bytes;
 
 use crate::option::TelnetOption;
 
@@ -17,13 +17,12 @@ pub enum SubnegotiationType {
     Unknown(TelnetOption, Bytes),
 }
 
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum LineModeOption {
     Mode(u8),
-    SLC(Vec<(SlcFunction, u8, char)>),
+    SLC(Vec<(Dispatch, char)>),
     ForwardMask,
-    Unknown(u8)
+    Unknown(u8),
 }
 
 impl From<u8> for LineModeOption {
@@ -32,7 +31,7 @@ impl From<u8> for LineModeOption {
             MODE => LineModeOption::Mode(0),
             LINEMODE_SLC => LineModeOption::SLC(Vec::new()),
             LINEMODE_FORWARD_MASK => LineModeOption::ForwardMask,
-            _ => LineModeOption::Unknown(value)
+            _ => LineModeOption::Unknown(value),
         }
     }
 }
@@ -44,11 +43,9 @@ impl Into<u8> for LineModeOption {
             LineModeOption::SLC(_) => LINEMODE_SLC,
             LineModeOption::ForwardMask => LINEMODE_FORWARD_MASK,
             LineModeOption::Unknown(value) => value,
-
         }
     }
 }
-
 
 impl SubnegotiationType {
     /// Returns the length (in bytes) of the subnegotiation data.
@@ -78,11 +75,11 @@ impl SubnegotiationType {
                     LineModeOption::SLC(triples) => {
                         /// Mode byte plus length of triples
                         return triples.len() * 3 + 1;
-                    },
+                    }
                     LineModeOption::Mode(_) => 2,
-                    _ => unimplemented!()
+                    _ => unimplemented!(),
                 }
-            },
+            }
             SubnegotiationType::Unknown(_, bytes) => bytes.len(),
         }
     }
