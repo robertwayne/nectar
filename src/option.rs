@@ -1,4 +1,7 @@
-use crate::constants::{CHARSET, ECHO, GA, GMCP, MCCP2, MSP, MSSP, MXP, SGA, TELOPT_EOR, NAWS, STATUS, TIMING_MARK, LINEMODE, REMOTE_FLOW_CONTROL};
+use crate::constants::{
+    CHARSET, ECHO, GA, GMCP, LINEMODE, MCCP2, MSP, MSSP, MXP, NAWS, REMOTE_FLOW_CONTROL, SGA,
+    STATUS, TELOPT_EOR, TIMING_MARK,
+};
 
 /// Represents all Telnet options supported by Nectar.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

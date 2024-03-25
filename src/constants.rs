@@ -120,6 +120,50 @@ pub const CHARSET_TTABLE_REJECTED: u8 = 5;
 pub const CHARSET_TTABLE_ACK: u8 = 6;
 pub const CHARSET_TTABLE_NAK: u8 = 7;
 
+/// Constants representing different levels and functionalities associated with
+/// Telnet's Special Linemode Characters (SLC).
+
+/// `SLC_DEFAULT`: Represents the default state of a linemode option. This level indicates
+/// that the default action should be taken for a particular SLC function.
+/// It is typically used when no specific action or value is assigned to an SLC function.
+pub const SLC_DEFAULT: u8 = 3;
+
+/// `SLC_VALUE`: Signifies that a specific value is associated with an SLC function. This
+/// level is used when a particular SLC function is configured with a specific,
+/// non-default value that must be recognized and acted upon.
+pub const SLC_VALUE: u8 = 2;
+
+/// `SLC_CANTCHANGE`: Indicates that the current SLC function's setting cannot be modified.
+/// This level is used for SLC functions that are essential for the operation
+/// or for which the ability to change the setting would result in undesired behavior.
+pub const SLC_CANTCHANGE: u8 = 1;
+
+/// `SLC_NOSUPPORT`: Represents the lack of support for a particular SLC function. This
+/// level is used when a Telnet client or server does not recognize or cannot
+/// implement the specific SLC function being queried or set.
+pub const SLC_NOSUPPORT: u8 = 0;
+
+/// `SLC_LEVELBITS`: A mask used to isolate the level bits in an SLC function definition.
+/// This constant is used in operations that require identifying the specific
+/// level associated with an SLC function.
+pub const SLC_LEVELBITS: u8 = 3;
+
+/// `SLC_ACK`: A flag used to acknowledge the receipt or acceptance of an SLC function
+/// setting. This acknowledgment can be part of a negotiation process where
+/// one side proposes a setting and the other side acknowledges it.
+pub const SLC_ACK: u8 = 128;
+
+/// `SLC_FLUSHIN`: A flag indicating that all incoming data should be flushed (i.e., discarded).
+/// This is used in situations where it is necessary to clear the input buffer,
+/// such as when the mode of operation changes or in response to certain error conditions.
+pub const SLC_FLUSHIN: u8 = 64;
+
+/// `SLC_FLUSHOUT`: Similar to `SLC_FLUSHIN`, but for outgoing data. This flag indicates that
+/// all data queued for output should be flushed. This can be useful in situations
+/// where an immediate response is needed, or when clearing the output buffer
+/// is required to maintain the correct sequence of data or commands.
+pub const SLC_FLUSHOUT: u8 = 32;
+
 /// Telnet Special Linemode Characters (SLC) Functions as Constants
 
 // SLC Function Names
