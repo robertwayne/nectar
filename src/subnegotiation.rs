@@ -1,4 +1,6 @@
 use bytes::Bytes;
+use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
+use crate::linemode::SlcFunction;
 
 use crate::option::TelnetOption;
 
@@ -20,9 +22,43 @@ pub enum SubnegotiationType {
     /// Indicates that the receiver acknowledges a TTABLE-IS message, but is
     /// unable to handle it. This will terminate subnegotiation.
     CharsetTTableRejected,
+    LineMode(LineModeOption),
     /// A subnegotiation for an unknown option.
     Unknown(TelnetOption, Bytes),
 }
+
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum LineModeOption {
+    Mode(u8),
+    SLC(Vec<(SlcFunction, u8, char)>),
+    ForwardMask,
+    Unknown(u8)
+}
+
+impl From<u8> for LineModeOption {
+    fn from(value: u8) -> Self {
+        match value {
+            MODE => LineModeOption::Mode(0),
+            LINEMODE_SLC => LineModeOption::SLC(Vec::new()),
+            LINEMODE_FORWARD_MASK => LineModeOption::ForwardMask,
+            _ => LineModeOption::Unknown(value)
+        }
+    }
+}
+
+impl Into<u8> for LineModeOption {
+    fn into(self) -> u8 {
+        match self {
+            LineModeOption::Mode(_) => MODE,
+            LineModeOption::SLC(_) => LINEMODE_SLC,
+            LineModeOption::ForwardMask => LINEMODE_FORWARD_MASK,
+            LineModeOption::Unknown(value) => value,
+
+        }
+    }
+}
+
 
 impl SubnegotiationType {
     /// Returns the length (in bytes) of the subnegotiation data.
@@ -49,6 +85,16 @@ impl SubnegotiationType {
             }
             SubnegotiationType::CharsetRejected => 1,
             SubnegotiationType::CharsetTTableRejected => 1,
+            SubnegotiationType::LineMode(mode) => {
+                match mode {
+                    LineModeOption::SLC(triples) => {
+                        /// Mode byte plus length of triples
+                        return triples.len() * 3 + 1;
+                    },
+                    LineModeOption::Mode(_) => 2,
+                    _ => unimplemented!()
+                }
+            },
             SubnegotiationType::Unknown(_, bytes) => bytes.len(),
         }
     }
