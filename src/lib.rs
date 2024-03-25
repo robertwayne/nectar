@@ -12,6 +12,8 @@ pub mod constants;
 pub mod error;
 /// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
 pub mod event;
+/// Telnet linemode options
+pub mod linemode;
 /// Telnet options such as Echo, GoAhead, and SuppressGoAhead.
 pub mod option;
 /// Telnet subnegotiation options.
@@ -22,10 +24,12 @@ use std::mem;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
+use crate::constants::MODE;
+use crate::subnegotiation::LineModeOption;
 use crate::{
     constants::{
         CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
-        DONT, IAC, NAWS, NOP, SB, SE, WILL, WONT,
+        DONT, IAC, LINEMODE, NAWS, NOP, SB, SE, WILL, WONT,
     },
     error::TelnetError,
     event::TelnetEvent,
@@ -145,6 +149,32 @@ fn decode_negotiate_about_window_size(subvec: &[u8]) -> Option<TelnetEvent> {
     }
 }
 
+fn decode_linemode(subvec: &[u8]) -> Option<TelnetEvent> {
+    if subvec.is_empty() {
+        return None;
+    }
+
+    let suboption = LineModeOption::from(subvec[0]);
+
+    match suboption {
+        LineModeOption::SLC(_) => {
+            let slc_data = &subvec[1..];
+
+            // (function, flag, value)
+            let slc_triples = slc_data
+                .chunks_exact(3)
+                .map(|chunk| ((chunk[0], chunk[1]).into(), chunk[2] as char))
+                .collect();
+            return Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                LineModeOption::SLC(slc_triples),
+            )));
+        }
+        _ => {}
+    };
+
+    Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(suboption)))
+}
+
 fn decode_charset(subvec: &[u8]) -> Option<TelnetEvent> {
     if subvec.is_empty() {
         return None;
@@ -206,6 +236,7 @@ fn decode_subnegotiation_end(
         let opt = match option {
             NAWS => decode_negotiate_about_window_size(&subvec),
             CHARSET => decode_charset(&subvec),
+            LINEMODE => decode_linemode(&subvec),
             _ => Some(decode_unknown(option, subvec)),
         };
 
@@ -403,6 +434,13 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
             // IAC SUBNEGOTIATION END
             buffer.extend([IAC, SE]);
         }
+        SubnegotiationType::LineMode(mode) => match mode {
+            LineModeOption::Mode(value) => {
+                buffer.reserve(7);
+                buffer.extend([IAC, SB, LINEMODE, MODE, value, IAC, SE]);
+            }
+            _ => unimplemented!(),
+        },
     }
 }
 
