@@ -1,7 +1,8 @@
+use std::{error::Error, net::SocketAddr};
+
 use futures_lite::StreamExt;
 use futures_util::sink::SinkExt;
 use nectar::{event::TelnetEvent, TelnetCodec};
-use std::{error::Error, net::SocketAddr};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::Framed;
 

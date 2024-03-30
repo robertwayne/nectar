@@ -13,3 +13,6 @@ readme = "README.md"
 [dependencies]
 bytes = "1"
 tokio-util = { version = "0.7", features = ["codec"] }
+
+[lib]
+doctest = false

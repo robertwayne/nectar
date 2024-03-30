@@ -1,37 +1,59 @@
+// Echo a message back to the other side
 pub const ECHO: u8 = 1;
 
-pub const GA: u8 = 249; // Go Ahead
-pub const SGA: u8 = 3; // Suppress Go Ahead
-pub const IAC: u8 = 255; // Interpret As Command
-pub const SB: u8 = 250; // Subnegotiation Begin
-pub const NAWS: u8 = 31; // Negotiate About Window Size
-pub const SE: u8 = 240; // Subnegotiation End
+// Go Ahead
+pub const GA: u8 = 249;
 
-pub const EL: u8 = 248; // Erase Line
+// Suppress Go Ahead
+pub const SGA: u8 = 3;
 
-pub const NOP: u8 = 241; // No operation
-pub const NULL: u8 = 0; // No operation
+// Interpret As Command
+pub const IAC: u8 = 255;
 
-pub const CR: u8 = 13; // Carriage Return
-pub const LF: u8 = 10; // Line Feed
+// Subnegotiation Begin
+pub const SB: u8 = 250;
+
+// Negotiate About Window Size
+pub const NAWS: u8 = 31;
+
+// Subnegotiation End
+pub const SE: u8 = 240;
+
+// Erase Line
+pub const EL: u8 = 248;
+
+// No Operation
+pub const NOP: u8 = 241;
+
+// No Operation
+pub const NULL: u8 = 0;
+
+// Carriage Return
+pub const CR: u8 = 13;
+
+// Line Feed
+pub const LF: u8 = 10;
+
+// Carriage Return + Line Feed
 pub const CRLF: &[u8] = b"\r\n";
 
-// `<https://tools.ietf.org/search/rfc1116>` 2.1 The LINEMODE function
+// Linemode - <https://datatracker.ietf.org/doc/html/rfc1116#section-2.1>
 pub const LINEMODE: u8 = 34;
 
-// `<https://tools.ietf.org/search/rfc1116>` 2.2 LINEMODE suboption MODE
+// Linemode subnegotiation options -
+// <https://datatracker.ietf.org/doc/html/rfc1184#section-2>
 pub const MODE: u8 = 1; //
 
 // When set, the client side of the connection should process all input lines,
 // performing any editing function, and only send completed lines to the remote
-// side. When unset, client side should not process any input from the user, and
-// the server side should take care of all character processing that needs to be
-// done.
+// side. When unset, client side should not process any input from the user,
+// and the server side should take care of all character processing that needs
+// to be done.
 pub const LINEMODE_EDIT: u8 = 1;
 
 // When set, the client side should translate appropriate interrupts/signals to
-// their Telnet equivalent. (These would be IP, BRK, ABORT, EOF, and SUSP). When
-// unset, the client should pass interrupts/signals as their normal ASCII
+// their Telnet equivalent. (These would be IP, BRK, ABORT, EOF, and SUSP).
+// When unset, the client should pass interrupts/signals as their normal ASCII
 // values.
 pub const LINEMODE_TRAPSIG: u8 = 2;
 
@@ -52,30 +74,32 @@ pub const DO: u8 = 253;
 // option.
 pub const DONT: u8 = 254;
 
-/// EOR - End of Record - https://tintin.mudhalla.net/protocols/eor/
-pub const TELOPT_EOR: u8 = 25; // the telnet option for negotiation
-pub const EOR: u8 = 239; // the byte to send to indicate end of record
+// End of Record negotiation
+pub const TELOPT_EOR: u8 = 25;
 
-/// CHARSET - https://tools.ietf.org/html/rfc2066
-pub const CHARSET: u8 = 42;
+// End of Record - <https://tintin.mudhalla.net/protocols/eor/>
+pub const EOR: u8 = 239;
 
-/// Mud Server Status Protocol - https://mudhalla.net/tintin/protocols/mssp/
+// Mud Server Status Protocol - <https://mudhalla.net/tintin/protocols/mssp/>
 pub const MSSP: u8 = 70;
 
-/// Mud Client Compression Protocol (v2) -
-/// https://www.gammon.com.au/mccp/protocol.html
+// Mud Client Compression Protocol (v2) -
+// <https://www.gammon.com.au/mccp/protocol.html>
 pub const MCCP2: u8 = 86;
 
-/// Mud Sound Protocol - https://www.zuggsoft.com/zmud/msp.htm
+// Mud Sound Protocol - <https://www.zuggsoft.com/zmud/msp.htm>
 pub const MSP: u8 = 90;
 
-/// Mud eXtension Protocol - https://www.zuggsoft.com/zmud/mxp.htm
+// Mud eXtension Protocol - <https://www.zuggsoft.com/zmud/mxp.htm>
 pub const MXP: u8 = 91;
 
-/// Generic Mud Communication Protocol - https://www.gammon.com.au/gmcp
+// Generic Mud Communication Protocol - <https://www.gammon.com.au/gmcp>
 pub const GMCP: u8 = 201;
 
-/// CHARSET subnegotiation commands
+// CHARSET - <https://tools.ietf.org/html/rfc2066>
+pub const CHARSET: u8 = 42;
+
+// CHARSET subnegotiation commands
 pub const CHARSET_REQUEST: u8 = 1;
 pub const CHARSET_ACCEPTED: u8 = 2;
 pub const CHARSET_REJECTED: u8 = 3;

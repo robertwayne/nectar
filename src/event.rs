@@ -4,23 +4,31 @@ use crate::{
     subnegotiation::SubnegotiationType,
 };
 
-/// Represents all Telnet events supported by Nectar.
-/// See `<https://tools.ietf.org/html/rfc854>` for more information.
+/// Represents message types supported by Nectar.
 #[derive(Debug, PartialEq, Eq)]
 pub enum TelnetEvent {
+    /// A single byte character.
     Character(u8),
     /// A message that guarantees it ends with `\r\n`.
     Message(String),
     /// A message that does not guarantee it ends with `\r\n`. Allows for
-    /// sending messages without enforced newlines. Used for outgoing
-    /// messages only.
+    /// sending messages without enforced newlines. Used for outgoing messages
+    /// only.
     RawMessage(String),
+    /// A message requesting the other side to perform an option.
     Do(TelnetOption),
+    /// A message indicating an intent to perform an option.
     Will(TelnetOption),
+    /// A message telling the other side to discontinue using an option, or that
+    /// it is no longer expected.
     Dont(TelnetOption),
+    /// A message refusing to perform an option.
     Wont(TelnetOption),
+    /// A message indicating that a subnegotiation is beginning.
     Subnegotiate(SubnegotiationType),
+    /// A message indicating that the data stream should resume.
     GoAhead,
+    /// No operation.
     Nop,
 }
 
