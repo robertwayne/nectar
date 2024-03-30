@@ -31,7 +31,6 @@ pub enum TelnetOption {
     ///
     /// See <https://datatracker.ietf.org/doc/html/rfc885> for more information.
     EndOfRecord,
-    ///
     Charset,
     MCCP2,
     GMCP,
