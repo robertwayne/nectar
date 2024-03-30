@@ -3,14 +3,24 @@ use bytes::Bytes;
 use crate::option::TelnetOption;
 
 /// Represents all Telnet subnegotiation events supported by Nectar.
-/// See `<https://tools.ietf.org/html/rfc854>` for more information.
 #[derive(Debug, PartialEq, Eq)]
 pub enum SubnegotiationType {
+    /// A subnegotiation for the window size, where the first value is the width
+    /// and the second value is the height. The values are in characters.
     WindowSize(u16, u16),
+    /// Indicates an intent to begin CHARSET subnegotiation. This can only be
+    /// sent after receiving a DO CHARSET after sending a WILL CHARSET (in any
+    /// order).
     CharsetRequest(Vec<Bytes>),
+    /// Indicates that the receiver has accepted the charset request.
     CharsetAccepted(Bytes),
+    /// Indicates that the receiver acknowledges the charset request, but will
+    /// not use any of the requested characters.
     CharsetRejected,
+    /// Indicates that the receiver acknowledges a TTABLE-IS message, but is
+    /// unable to handle it. This will terminate subnegotiation.
     CharsetTTableRejected,
+    /// A subnegotiation for an unknown option.
     Unknown(TelnetOption, Bytes),
 }
 
@@ -28,11 +38,13 @@ impl SubnegotiationType {
                 for bytes in vec {
                     len += bytes.len();
                 }
-                // add one more for the subnegotation sub-option (i.e. CHARSET_REQUEST)
+                // add one more for the subnegotation sub-option (i.e.
+                // CHARSET_REQUEST)
                 len + 1
             }
             SubnegotiationType::CharsetAccepted(charset) => {
-                // add one more for the subnegotation sub-option (i.e. CHARSET_ACCEPTED)
+                // add one more for the subnegotation sub-option (i.e.
+                // CHARSET_ACCEPTED)
                 charset.len() + 1
             }
             SubnegotiationType::CharsetRejected => 1,
