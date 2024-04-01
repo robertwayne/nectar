@@ -1,6 +1,29 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+// RFC 854 `<https://tools.ietf.org/html/rfc854>`
+//
+// Originally based off of https://github.com/jtenner/telnet_codec, which has
+// been archived.
+
+use std::mem;
+
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use tokio_util::codec::{Decoder, Encoder};
+
+use crate::{
+    constants::{
+        CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
+        DONT, IAC, LINEMODE, NAWS, NOP, SB, SE, WILL, WONT,
+    },
+    error::TelnetError,
+    event::TelnetEvent,
+    option::TelnetOption,
+    subnegotiation::SubnegotiationType,
+};
+use crate::constants::MODE;
+use crate::subnegotiation::LineModeOption;
+
 /// Various byte or byte sequences used in the Telnet protocol.
 pub mod constants;
 /// Codec and Io errors that may occur while processing Telnet events.
@@ -14,24 +37,6 @@ pub mod option;
 /// Telnet subnegotiation options.
 pub mod subnegotiation;
 
-use std::mem;
-
-use bytes::{Buf, BufMut, Bytes, BytesMut};
-use tokio_util::codec::{Decoder, Encoder};
-
-use crate::constants::MODE;
-use crate::subnegotiation::LineModeOption;
-use crate::{
-    constants::{
-        CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
-        DONT, IAC, LINEMODE, NAWS, NOP, SB, SE, WILL, WONT,
-    },
-    error::TelnetError,
-    event::TelnetEvent,
-    option::TelnetOption,
-    subnegotiation::SubnegotiationType,
-};
-
 type Result<T> = std::result::Result<T, TelnetError>;
 
 /// Implements a Tokio codec for the Telnet protocol, along with MUD-specific
@@ -44,12 +49,14 @@ pub struct TelnetCodec {
     pub sga: bool,
     max_buffer_length: usize,
     buffer: Vec<u8>,
+    /// If this field is set to false, nectar will generate an event for each character instead of each message
+    pub message_mode: bool,
 }
 
 impl TelnetCodec {
     #[must_use]
     pub fn new(max_buffer_length: usize) -> Self {
-        TelnetCodec { sga: false, max_buffer_length, buffer: Vec::new() }
+        TelnetCodec { sga: false, max_buffer_length, buffer: Vec::new(), message_mode: true }
     }
 }
 
@@ -162,14 +169,12 @@ fn decode_linemode(subvec: &[u8]) -> Option<TelnetEvent> {
                 .chunks_exact(3)
                 .map(|chunk| ((chunk[0], chunk[1]).into(), chunk[2] as char))
                 .collect();
-            return Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
-                LineModeOption::SLC(slc_triples),
-            )));
+            Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::SLC(
+                slc_triples,
+            ))))
         }
-        _ => {}
-    };
-
-    Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(suboption)))
+        _ => Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(suboption))),
+    }
 }
 
 fn decode_charset(subvec: &[u8]) -> Option<TelnetEvent> {
@@ -342,6 +347,12 @@ fn decode_bytes(
                 }
 
                 decode_next_byte(codec, &mut codec_buffer_size, buffer[*byte_index]);
+            }
+            c if !codec.message_mode => {
+                let mut codec_buffer = mem::take(&mut codec.buffer);
+                codec_buffer.pop();
+                buffer.advance(*byte_index + 1);
+                return Some(TelnetEvent::Character(c));
             }
             _ => decode_next_byte(codec, &mut codec_buffer_size, buffer[*byte_index]),
         };
@@ -569,8 +580,9 @@ mod tests {
             }
 
             mod test_iac {
-                use super::*;
                 use crate::constants::ECHO;
+
+                use super::*;
 
                 #[test]
                 fn test_double_iac() {
@@ -730,8 +742,9 @@ mod tests {
     }
 
     mod test_encode {
-        use super::*;
         use crate::constants::ECHO;
+
+        use super::*;
 
         #[test]
         fn test_message() {
