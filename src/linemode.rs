@@ -352,3 +352,24 @@ impl Into<u8> for SlcFunction {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_slc_function() {
+        let input = SLC_SYNCH;  // Use a constant that represents a known SLC function
+        let expected = SlcFunction::Synch;
+        let result = SlcFunction::from(input);
+        assert_eq!(result, expected, "Failed to parse SLC_SYNCH into SlcFunction::Synch");
+    }
+
+    #[test]
+    fn test_modifiers_from_byte() {
+        let input = SLC_ACK | SLC_FLUSHIN;  // Example combining two modifier flags
+        let result = Modifiers::from(input);
+        assert!(result.ack && result.flush_in, "Modifiers did not correctly interpret ACK and FLUSHIN flags");
+    }
+
+}
