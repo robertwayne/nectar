@@ -38,13 +38,15 @@ pub const CRLF: &[u8] = b"\r\n";
 
 // Linemode - <https://datatracker.ietf.org/doc/html/rfc1116#section-2.1>
 pub const LINEMODE: u8 = 34;
+// `<https://tools.ietf.org/search/rfc1116>` 2.2 LINEMODE suboption MODE
+pub const MODE: u8 = 1; // Indicates the suboption code for the LINEMODE MODE. This is used to negotiate the mode of line processing between the Telnet client and server, allowing for a more flexible and efficient handling of line-oriented data.
 
-// Linemode subnegotiation options -
-// <https://datatracker.ietf.org/doc/html/rfc1184#section-2>
-pub const MODE: u8 = 1; //
-
-/// TODO: Document this
+/// Defines the suboption code for the LINEMODE SLC (Special Character) function. This is used in Telnet communications to negotiate the handling of special characters that control various terminal functions, such as interrupt, flush, and suspend actions.
+/// The SLC suboption allows for the configuration and manipulation of these special characters, enhancing the control over the terminal behavior in a Telnet session.
 pub const LINEMODE_SLC: u8 = 3;
+
+/// Represents a mask used in LINEMODE negotiations to indicate the forwarding of linemode options. When set, this mask signals that the client wishes to forward linemode options to the server, thereby enabling the server to configure linemode settings.
+/// This capability is part of the LINEMODE suboptions negotiation, allowing for dynamic and flexible configuration of line processing behaviors based on the client's requirements and capabilities.
 pub const LINEMODE_FORWARD_MASK: u8 = 2;
 
 // When set, the client side of the connection should process all input lines,
