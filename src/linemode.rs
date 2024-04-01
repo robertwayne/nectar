@@ -1,4 +1,10 @@
-use crate::constants::{SLC_ABORT, SLC_ABORTC, SLC_ACK, SLC_AO, SLC_AYT, SLC_BRK, SLC_BRKC, SLC_DSUSPC, SLC_EC, SLC_EL, SLC_EOF, SLC_EOFCHAR, SLC_EOR, SLC_EORC, SLC_EW, SLC_EXIT, SLC_FLUSHIN, SLC_FLUSHOUT, SLC_FORW1, SLC_FORW2, SLC_IP, SLC_LEVELBITS, SLC_LNEXT, SLC_LP, SLC_MCL, SLC_MCR, SLC_MCUB, SLC_MCUF, SLC_MCWL, SLC_MCWR, SLC_REPRINT, SLC_RP, SLC_SUSP, SLC_SUSPC, SLC_SUSPCHAR, SLC_SYNCH, SLC_XOFF, SLC_XOFFC, SLC_XON, SLC_XONC};
+use crate::constants::{
+    SLC_ABORT, SLC_ABORTC, SLC_ACK, SLC_AO, SLC_AYT, SLC_BRK, SLC_BRKC, SLC_DSUSPC, SLC_EC, SLC_EL,
+    SLC_EOF, SLC_EOFCHAR, SLC_EOR, SLC_EORC, SLC_EW, SLC_EXIT, SLC_FLUSHIN, SLC_FLUSHOUT,
+    SLC_FORW1, SLC_FORW2, SLC_IP, SLC_LEVELBITS, SLC_LNEXT, SLC_LP, SLC_MCL, SLC_MCR, SLC_MCUB,
+    SLC_MCUF, SLC_MCWL, SLC_MCWR, SLC_REPRINT, SLC_RP, SLC_SUSP, SLC_SUSPC, SLC_SUSPCHAR,
+    SLC_SYNCH, SLC_XOFF, SLC_XOFFC, SLC_XON, SLC_XONC,
+};
 
 /// Represents the support level of Telnet's Special Linemode Characters (SLC).
 /// This enum categorizes the possible states or capabilities associated with
@@ -24,7 +30,6 @@ pub enum Level {
     /// its predefined or most common configuration.
     Default,
 }
-
 
 impl From<u8> for Level {
     fn from(value: u8) -> Self {
@@ -71,10 +76,7 @@ pub struct Dispatch {
 
 impl From<(u8, u8)> for Dispatch {
     fn from((function, modifiers): (u8, u8)) -> Self {
-        Self {
-            function: function.into(),
-            modifiers: modifiers.into()
-        }
+        Self { function: function.into(), modifiers: modifiers.into() }
     }
 }
 
@@ -88,7 +90,6 @@ impl From<u8> for Modifiers {
         }
     }
 }
-
 
 impl Into<(u8, u8)> for Dispatch {
     fn into(self) -> (u8, u8) {
@@ -121,7 +122,6 @@ pub struct Modifiers {
     /// immediate processing of urgent commands or to maintain data sequence integrity.
     pub flush_out: bool,
 }
-
 
 impl Into<u8> for Modifiers {
     fn into(self) -> u8 {
@@ -263,7 +263,6 @@ pub enum SlcFunction {
     // Additional SLC functions can be added here as needed.
 }
 
-
 impl From<u8> for SlcFunction {
     fn from(value: u8) -> Self {
         match value {
@@ -359,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_parse_slc_function() {
-        let input = SLC_SYNCH;  // Use a constant that represents a known SLC function
+        let input = SLC_SYNCH; // Use a constant that represents a known SLC function
         let expected = SlcFunction::Synch;
         let result = SlcFunction::from(input);
         assert_eq!(result, expected, "Failed to parse SLC_SYNCH into SlcFunction::Synch");
@@ -367,9 +366,11 @@ mod tests {
 
     #[test]
     fn test_modifiers_from_byte() {
-        let input = SLC_ACK | SLC_FLUSHIN;  // Example combining two modifier flags
+        let input = SLC_ACK | SLC_FLUSHIN; // Example combining two modifier flags
         let result = Modifiers::from(input);
-        assert!(result.ack && result.flush_in, "Modifiers did not correctly interpret ACK and FLUSHIN flags");
+        assert!(
+            result.ack && result.flush_in,
+            "Modifiers did not correctly interpret ACK and FLUSHIN flags"
+        );
     }
-
 }

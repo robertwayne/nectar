@@ -11,6 +11,8 @@ use std::mem;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
+use crate::constants::MODE;
+use crate::subnegotiation::LineModeOption;
 use crate::{
     constants::{
         CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
@@ -21,8 +23,6 @@ use crate::{
     option::TelnetOption,
     subnegotiation::SubnegotiationType,
 };
-use crate::constants::MODE;
-use crate::subnegotiation::LineModeOption;
 
 /// Various byte or byte sequences used in the Telnet protocol.
 pub mod constants;
