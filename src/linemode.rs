@@ -1,9 +1,9 @@
 use crate::constants::{
-    SLC_ABORT, SLC_ABORTC, SLC_ACK, SLC_AO, SLC_AYT, SLC_BRK, SLC_BRKC, SLC_DSUSPC, SLC_EC, SLC_EL,
-    SLC_EOF, SLC_EOFCHAR, SLC_EOR, SLC_EORC, SLC_EW, SLC_EXIT, SLC_FLUSHIN, SLC_FLUSHOUT,
-    SLC_FORW1, SLC_FORW2, SLC_IP, SLC_LEVELBITS, SLC_LNEXT, SLC_LP, SLC_MCL, SLC_MCR, SLC_MCUB,
-    SLC_MCUF, SLC_MCWL, SLC_MCWR, SLC_REPRINT, SLC_RP, SLC_SUSP, SLC_SUSPC, SLC_SUSPCHAR,
-    SLC_SYNCH, SLC_XOFF, SLC_XOFFC, SLC_XON, SLC_XONC,
+    DO, DONT, SLC_ABORT, SLC_ABORTC, SLC_ACK, SLC_AO, SLC_AYT, SLC_BRK, SLC_BRKC, SLC_DSUSPC,
+    SLC_EC, SLC_EL, SLC_EOF, SLC_EOFCHAR, SLC_EOR, SLC_EORC, SLC_EW, SLC_EXIT, SLC_FLUSHIN,
+    SLC_FLUSHOUT, SLC_FORW1, SLC_FORW2, SLC_IP, SLC_LEVELBITS, SLC_LNEXT, SLC_LP, SLC_MCL, SLC_MCR,
+    SLC_MCUB, SLC_MCUF, SLC_MCWL, SLC_MCWR, SLC_REPRINT, SLC_RP, SLC_SUSP, SLC_SUSPC, SLC_SUSPCHAR,
+    SLC_SYNCH, SLC_XOFF, SLC_XOFFC, SLC_XON, SLC_XONC, WILL, WONT,
 };
 
 /// Represents the support level of Telnet's Special Linemode Characters (SLC).
@@ -39,6 +39,39 @@ impl From<u8> for Level {
             2 => Level::Value,
             3 => Level::Default,
             _ => unreachable!("Level value out of range"), // Since we're masking with SLC_LEVELBITS, this should never happen
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ForwardMaskOption {
+    Do(Vec<u8>),
+    Dont,
+    Will,
+    Wont,
+    Unknown(u8),
+}
+
+impl From<ForwardMaskOption> for u8 {
+    fn from(val: ForwardMaskOption) -> u8 {
+        match val {
+            ForwardMaskOption::Do(_) => DO,
+            ForwardMaskOption::Dont => DONT,
+            ForwardMaskOption::Will => WILL,
+            ForwardMaskOption::Wont => WONT,
+            ForwardMaskOption::Unknown(byte) => byte,
+        }
+    }
+}
+
+impl From<u8> for ForwardMaskOption {
+    fn from(value: u8) -> Self {
+        match value {
+            DO => ForwardMaskOption::Do(Vec::with_capacity(16)),
+            DONT => ForwardMaskOption::Dont,
+            WILL => ForwardMaskOption::Will,
+            WONT => ForwardMaskOption::Dont,
+            byte => ForwardMaskOption::Unknown(byte),
         }
     }
 }
@@ -91,9 +124,9 @@ impl From<u8> for Modifiers {
     }
 }
 
-impl Into<(u8, u8)> for Dispatch {
-    fn into(self) -> (u8, u8) {
-        (self.function.into(), self.modifiers.into())
+impl From<Dispatch> for (u8, u8) {
+    fn from(val: Dispatch) -> (u8, u8) {
+        (val.function.into(), val.modifiers.into())
     }
 }
 
@@ -123,25 +156,25 @@ pub struct Modifiers {
     pub flush_out: bool,
 }
 
-impl Into<u8> for Modifiers {
-    fn into(self) -> u8 {
-        let mut value: u8 = self.level.into();
-        if self.ack {
+impl From<Modifiers> for u8 {
+    fn from(val: Modifiers) -> u8 {
+        let mut value: u8 = val.level.into();
+        if val.ack {
             value |= SLC_ACK;
         }
-        if self.flush_in {
+        if val.flush_in {
             value |= SLC_FLUSHIN;
         }
-        if self.flush_out {
+        if val.flush_out {
             value |= SLC_FLUSHOUT;
         }
         value
     }
 }
 
-impl Into<u8> for Level {
-    fn into(self) -> u8 {
-        match self {
+impl From<Level> for u8 {
+    fn from(val: Level) -> u8 {
+        match val {
             Level::NoSupport => 0,
             Level::CantChange => 1,
             Level::Value => 2,
@@ -308,9 +341,9 @@ impl From<u8> for SlcFunction {
     }
 }
 
-impl Into<u8> for SlcFunction {
-    fn into(self) -> u8 {
-        match self {
+impl From<SlcFunction> for u8 {
+    fn from(val: SlcFunction) -> u8 {
+        match val {
             SlcFunction::Synch => SLC_SYNCH,
             SlcFunction::Brk => SLC_BRK,
             SlcFunction::Ip => SLC_IP,

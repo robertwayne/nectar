@@ -11,7 +11,8 @@ use std::mem;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
-use crate::constants::MODE;
+use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
+use crate::linemode::ForwardMaskOption;
 use crate::subnegotiation::LineModeOption;
 use crate::{
     constants::{
@@ -158,7 +159,10 @@ fn decode_linemode(subvec: &[u8]) -> Option<TelnetEvent> {
         return None;
     }
 
-    let suboption = LineModeOption::from(subvec[0]);
+    let suboption = match subvec[0] {
+        WILL | WONT | DO | DONT => LineModeOption::ForwardMask(ForwardMaskOption::from(subvec[0])),
+        _ => LineModeOption::from(subvec[0]),
+    };
 
     match suboption {
         LineModeOption::SLC(_) => {
@@ -172,6 +176,17 @@ fn decode_linemode(subvec: &[u8]) -> Option<TelnetEvent> {
             Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::SLC(
                 slc_triples,
             ))))
+        }
+        LineModeOption::ForwardMask(_) => {
+            let data = &subvec[2..];
+            let option = match subvec[0] {
+                DO => ForwardMaskOption::Do(data.to_vec()),
+                byte => ForwardMaskOption::from(byte),
+            };
+
+            Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                LineModeOption::ForwardMask(option),
+            )))
         }
         _ => Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(suboption))),
     }
@@ -447,7 +462,46 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
                 buffer.reserve(7);
                 buffer.extend([IAC, SB, LINEMODE, MODE, value, IAC, SE]);
             }
-            _ => unimplemented!(),
+            LineModeOption::SLC(values) => {
+                // 4: Subnegotiation begin
+                // values.len() * 3: each entry symbolizes a triple of bytes:
+                // - Function
+                // - Modifiers (acknowledgement, urgency etc.)
+                // - Character
+                // 2: Subnegotiation end
+
+                buffer.reserve(6 + values.len() * 3);
+                buffer.extend([IAC, SB, LINEMODE, LINEMODE_SLC]);
+
+                for &(dispatch, char) in &values {
+                    let (first, second) = dispatch.into();
+                    buffer.extend([first, second, char as u8]);
+                }
+
+                buffer.extend([IAC, SE]);
+            }
+            LineModeOption::ForwardMask(ForwardMaskOption::Do(data)) => {
+                // Note: this needs to be 32 bytes in binary mode
+                buffer.reserve(7 + 16);
+
+                buffer.extend([IAC, SB, LINEMODE, DO, LINEMODE_FORWARD_MASK]);
+
+                let iter = data.into_iter().take(16);
+                let zeros = std::iter::repeat(0).take(16 - iter.len());
+
+                buffer.extend(iter.chain(zeros));
+                buffer.extend([IAC, SE]);
+            }
+            LineModeOption::ForwardMask(option) => {
+                buffer.reserve(7);
+                buffer.extend([IAC, SB, LINEMODE, option.into(), LINEMODE_FORWARD_MASK, IAC, SE]);
+            }
+            LineModeOption::Unknown(option, data) => {
+                buffer.reserve(7 + data.len());
+                buffer.extend([IAC, SB, LINEMODE, option]);
+                buffer.extend(data);
+                buffer.extend([IAC, SE]);
+            }
         },
     }
 }

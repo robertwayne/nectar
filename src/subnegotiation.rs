@@ -1,7 +1,7 @@
 use bytes::Bytes;
 
 use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
-use crate::linemode::Dispatch;
+use crate::linemode::{Dispatch, ForwardMaskOption};
 use crate::option::TelnetOption;
 
 /// Represents all Telnet subnegotiation events supported by Nectar.
@@ -27,12 +27,12 @@ pub enum SubnegotiationType {
     Unknown(TelnetOption, Bytes),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LineModeOption {
     Mode(u8),
     SLC(Vec<(Dispatch, char)>),
-    ForwardMask,
-    Unknown(u8),
+    ForwardMask(ForwardMaskOption),
+    Unknown(u8, Bytes),
 }
 
 impl From<u8> for LineModeOption {
@@ -40,19 +40,8 @@ impl From<u8> for LineModeOption {
         match value {
             MODE => LineModeOption::Mode(0),
             LINEMODE_SLC => LineModeOption::SLC(Vec::new()),
-            LINEMODE_FORWARD_MASK => LineModeOption::ForwardMask,
-            _ => LineModeOption::Unknown(value),
-        }
-    }
-}
-
-impl Into<u8> for LineModeOption {
-    fn into(self) -> u8 {
-        match self {
-            LineModeOption::Mode(_) => MODE,
-            LineModeOption::SLC(_) => LINEMODE_SLC,
-            LineModeOption::ForwardMask => LINEMODE_FORWARD_MASK,
-            LineModeOption::Unknown(value) => value,
+            LINEMODE_FORWARD_MASK => LineModeOption::ForwardMask(ForwardMaskOption::Unknown(0)),
+            _ => LineModeOption::Unknown(value, Bytes::new()),
         }
     }
 }
@@ -86,10 +75,12 @@ impl SubnegotiationType {
                 match mode {
                     LineModeOption::SLC(triples) => {
                         // Mode byte plus length of triples
-                        return triples.len() * 3 + 1;
+                        triples.len() * 3 + 1
                     }
                     LineModeOption::Mode(_) => 2,
-                    _ => unimplemented!(),
+                    LineModeOption::ForwardMask(ForwardMaskOption::Do(_)) => 2 + 16,
+                    LineModeOption::ForwardMask(_) => 2,
+                    LineModeOption::Unknown(_, data) => 1 + data.len(),
                 }
             }
             SubnegotiationType::Unknown(_, bytes) => bytes.len(),
