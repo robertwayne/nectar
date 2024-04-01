@@ -1,3 +1,4 @@
+// Echo a message back to the other side
 pub const ECHO: u8 = 1;
 
 // Go Ahead
