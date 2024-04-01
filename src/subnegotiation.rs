@@ -1,7 +1,7 @@
-use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
-use crate::linemode::{Dispatch, SlcFunction};
 use bytes::Bytes;
 
+use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
+use crate::linemode::Dispatch;
 use crate::option::TelnetOption;
 
 /// Represents all Telnet subnegotiation events supported by Nectar.
@@ -85,7 +85,7 @@ impl SubnegotiationType {
             SubnegotiationType::LineMode(mode) => {
                 match mode {
                     LineModeOption::SLC(triples) => {
-                        /// Mode byte plus length of triples
+                        // Mode byte plus length of triples
                         return triples.len() * 3 + 1;
                     }
                     LineModeOption::Mode(_) => 2,
