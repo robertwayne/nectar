@@ -98,14 +98,14 @@ pub const DONT: u8 = 254;
 pub const TELOPT_EOR: u8 = 25;
 
 /// STATUS - Verify the current status of options -
-/// https://www.rfc-editor.org/rfc/rfc859.html
+/// <https://www.rfc-editor.org/rfc/rfc859.html>
 pub const STATUS: u8 = 5;
 
 /// TIMING MARK - Verify that requested information has been used -
-/// https://datatracker.ietf.org/doc/rfc860/
+/// <https://datatracker.ietf.org/doc/rfc860/>
 pub const TIMING_MARK: u8 = 6;
 
-/// Remote flow control - https://datatracker.ietf.org/doc/rfc1372/
+/// Remote flow control - <https://datatracker.ietf.org/doc/rfc1372/>
 pub const REMOTE_FLOW_CONTROL: u8 = 33;
 
 // End of Record - <https://tintin.mudhalla.net/protocols/eor/>
