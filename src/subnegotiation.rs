@@ -1,8 +1,10 @@
 use bytes::Bytes;
 
-use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
-use crate::linemode::{Dispatch, ForwardMaskOption};
-use crate::option::TelnetOption;
+use crate::{
+    constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE},
+    linemode::{Dispatch, ForwardMaskOption},
+    option::TelnetOption,
+};
 
 /// Represents all Telnet subnegotiation events supported by Nectar.
 #[derive(Debug, PartialEq, Eq)]
@@ -47,9 +49,9 @@ impl From<u8> for LineModeOption {
 }
 
 impl SubnegotiationType {
-    /// Returns the length (in bytes) of the subnegotiation data.
-    /// This _does not_ include the IAC SB and IAC SE bytes, _nor_ the single
-    /// byte that represents the option.
+    /// Returns the length (in bytes) of the subnegotiation data. This _does
+    /// not_ include the IAC SB and IAC SE bytes, _nor_ the single byte that
+    /// represents the option.
     pub fn len(&self) -> usize {
         match self {
             SubnegotiationType::WindowSize(_, _) => 4,

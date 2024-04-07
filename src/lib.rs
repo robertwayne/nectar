@@ -14,16 +14,15 @@ use tokio_util::codec::{Decoder, Encoder};
 use crate::{
     constants::{
         CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
-        DONT, IAC, LINEMODE, NAWS, NOP, SB, SE, WILL, WONT,
+        DONT, IAC, LINEMODE, LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE, NAWS, NOP, SB, SE, WILL,
+        WONT,
     },
     error::TelnetError,
     event::TelnetEvent,
+    linemode::ForwardMaskOption,
     option::TelnetOption,
-    subnegotiation::SubnegotiationType,
+    subnegotiation::{LineModeOption, SubnegotiationType},
 };
-use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
-use crate::linemode::ForwardMaskOption;
-use crate::subnegotiation::LineModeOption;
 
 /// Various byte or byte sequences used in the Telnet protocol.
 pub mod constants;
@@ -48,9 +47,10 @@ type Result<T> = std::result::Result<T, TelnetError>;
 pub struct TelnetCodec {
     /// Whether or not the client has enabled the Suppress Go Ahead option.
     pub sga: bool,
-    max_buffer_length: usize,
-    buffer: Vec<u8>,
-    /// If this field is set to false, nectar will generate an event for each character instead of each message
+    pub max_buffer_length: usize,
+    pub buffer: Vec<u8>,
+    /// If this field is set to false, nectar will generate an event for each
+    /// character instead of each message
     pub message_mode: bool,
 }
 
@@ -476,12 +476,11 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
                 buffer.extend([IAC, SB, LINEMODE, MODE, value, IAC, SE]);
             }
             LineModeOption::SLC(values) => {
-                // 4: Subnegotiation begin
-                // values.len() * 3: each entry symbolizes a triple of bytes:
+                // 4: Subnegotiation begin values.len() * 3: each entry
+                // symbolizes a triple of bytes:
                 // - Function
                 // - Modifiers (acknowledgement, urgency etc.)
-                // - Character
-                // 2: Subnegotiation end
+                // - Character 2: Subnegotiation end
 
                 buffer.reserve(6 + values.len() * 3);
                 buffer.extend([IAC, SB, LINEMODE, LINEMODE_SLC]);
@@ -647,9 +646,8 @@ mod tests {
             }
 
             mod test_iac {
-                use crate::constants::ECHO;
-
                 use super::*;
+                use crate::constants::ECHO;
 
                 #[test]
                 fn test_double_iac() {
@@ -809,10 +807,11 @@ mod tests {
     }
 
     mod test_encode {
-        use crate::constants::{ECHO, LINEMODE_EDIT, SLC_ABORT, SLC_BRK, SLC_SYNCH};
-        use crate::linemode::{Dispatch, SlcFunction};
-
         use super::*;
+        use crate::{
+            constants::{ECHO, LINEMODE_EDIT, SLC_ABORT, SLC_BRK, SLC_SYNCH},
+            linemode::{Dispatch, SlcFunction},
+        };
 
         #[test]
         fn test_message() {
