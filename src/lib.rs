@@ -1,16 +1,10 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
-/// Various byte or byte sequences used in the Telnet protocol.
-pub mod constants;
-/// Codec and Io errors that may occur while processing Telnet events.
-pub mod error;
-/// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
-pub mod event;
-/// Telnet options such as `Echo`, `GoAhead`, and `SuppressGoAhead`.
-pub mod option;
-/// Telnet subnegotiation options.
-pub mod subnegotiation;
+// RFC 854 `<https://tools.ietf.org/html/rfc854>`
+//
+// Originally based off of https://github.com/jtenner/telnet_codec, which has
+// been archived.
 
 use std::mem;
 
@@ -20,13 +14,29 @@ use tokio_util::codec::{Decoder, Encoder};
 use crate::{
     constants::{
         CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
-        DONT, IAC, NAWS, NOP, SB, SE, WILL, WONT,
+        DONT, IAC, LINEMODE, NAWS, NOP, SB, SE, WILL, WONT,
     },
     error::TelnetError,
     event::TelnetEvent,
     option::TelnetOption,
     subnegotiation::SubnegotiationType,
 };
+use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
+use crate::linemode::ForwardMaskOption;
+use crate::subnegotiation::LineModeOption;
+
+/// Various byte or byte sequences used in the Telnet protocol.
+pub mod constants;
+/// Codec and Io errors that may occur while processing Telnet events.
+pub mod error;
+/// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
+pub mod event;
+/// Telnet linemode options
+pub mod linemode;
+/// Telnet options such as `Echo`, `GoAhead`, and `SuppressGoAhead`.
+pub mod option;
+/// Telnet subnegotiation options.
+pub mod subnegotiation;
 
 type Result<T> = std::result::Result<T, TelnetError>;
 
@@ -40,12 +50,14 @@ pub struct TelnetCodec {
     pub sga: bool,
     max_buffer_length: usize,
     buffer: Vec<u8>,
+    /// If this field is set to false, nectar will generate an event for each character instead of each message
+    pub message_mode: bool,
 }
 
 impl TelnetCodec {
     #[must_use]
     pub fn new(max_buffer_length: usize) -> Self {
-        TelnetCodec { sga: false, max_buffer_length, buffer: Vec::new() }
+        TelnetCodec { sga: false, max_buffer_length, buffer: Vec::new(), message_mode: true }
     }
 }
 
@@ -142,6 +154,57 @@ fn decode_negotiate_about_window_size(subvec: &[u8]) -> Option<TelnetEvent> {
     }
 }
 
+fn decode_linemode(subvec: &[u8]) -> Option<TelnetEvent> {
+    if subvec.is_empty() {
+        return None;
+    }
+
+    let suboption = match subvec[0] {
+        WILL | WONT | DO | DONT => LineModeOption::ForwardMask(ForwardMaskOption::from(subvec[0])),
+        _ => LineModeOption::from(subvec[0]),
+    };
+
+    match suboption {
+        LineModeOption::SLC(_) => {
+            let slc_data = &subvec[1..];
+
+            // (function, flag, value)
+            let slc_triples = slc_data
+                .chunks_exact(3)
+                .map(|chunk| ((chunk[0], chunk[1]).into(), chunk[2] as char))
+                .collect();
+            Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::SLC(
+                slc_triples,
+            ))))
+        }
+        LineModeOption::ForwardMask(_) => {
+            let data = &subvec[2..];
+            let option = match subvec[0] {
+                DO => ForwardMaskOption::Do(data.to_vec()),
+                byte => ForwardMaskOption::from(byte),
+            };
+
+            Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                LineModeOption::ForwardMask(option),
+            )))
+        }
+        LineModeOption::Mode(_) => {
+            let mode = subvec[1];
+
+            Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::Mode(
+                mode,
+            ))))
+        }
+        LineModeOption::Unknown(_, _) => {
+            let data = &subvec[1..];
+            Some(TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::Unknown(
+                subvec[0],
+                Bytes::from(data.to_vec()),
+            ))))
+        }
+    }
+}
+
 fn decode_charset(subvec: &[u8]) -> Option<TelnetEvent> {
     if subvec.is_empty() {
         return None;
@@ -203,6 +266,7 @@ fn decode_subnegotiation_end(
         let opt = match option {
             NAWS => decode_negotiate_about_window_size(&subvec),
             CHARSET => decode_charset(&subvec),
+            LINEMODE => decode_linemode(&subvec),
             _ => Some(decode_unknown(option, subvec)),
         };
 
@@ -312,6 +376,12 @@ fn decode_bytes(
 
                 decode_next_byte(codec, &mut codec_buffer_size, buffer[*byte_index]);
             }
+            c if !codec.message_mode => {
+                let mut codec_buffer = mem::take(&mut codec.buffer);
+                codec_buffer.pop();
+                buffer.advance(*byte_index + 1);
+                return Some(TelnetEvent::Character(c));
+            }
             _ => decode_next_byte(codec, &mut codec_buffer_size, buffer[*byte_index]),
         };
 
@@ -400,6 +470,52 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
             // IAC SUBNEGOTIATION END
             buffer.extend([IAC, SE]);
         }
+        SubnegotiationType::LineMode(mode) => match mode {
+            LineModeOption::Mode(value) => {
+                buffer.reserve(7);
+                buffer.extend([IAC, SB, LINEMODE, MODE, value, IAC, SE]);
+            }
+            LineModeOption::SLC(values) => {
+                // 4: Subnegotiation begin
+                // values.len() * 3: each entry symbolizes a triple of bytes:
+                // - Function
+                // - Modifiers (acknowledgement, urgency etc.)
+                // - Character
+                // 2: Subnegotiation end
+
+                buffer.reserve(6 + values.len() * 3);
+                buffer.extend([IAC, SB, LINEMODE, LINEMODE_SLC]);
+
+                for &(dispatch, char) in &values {
+                    let (first, second) = dispatch.into();
+                    buffer.extend([first, second, char as u8]);
+                }
+
+                buffer.extend([IAC, SE]);
+            }
+            LineModeOption::ForwardMask(ForwardMaskOption::Do(data)) => {
+                // Note: this needs to be 32 bytes in binary mode
+                buffer.reserve(7 + 16);
+
+                buffer.extend([IAC, SB, LINEMODE, DO, LINEMODE_FORWARD_MASK]);
+
+                let iter = data.into_iter().take(16);
+                let zeros = std::iter::repeat(0).take(16 - iter.len());
+
+                buffer.extend(iter.chain(zeros));
+                buffer.extend([IAC, SE]);
+            }
+            LineModeOption::ForwardMask(option) => {
+                buffer.reserve(7);
+                buffer.extend([IAC, SB, LINEMODE, option.into(), LINEMODE_FORWARD_MASK, IAC, SE]);
+            }
+            LineModeOption::Unknown(option, data) => {
+                buffer.reserve(7 + data.len());
+                buffer.extend([IAC, SB, LINEMODE, option]);
+                buffer.extend(data);
+                buffer.extend([IAC, SE]);
+            }
+        },
     }
 }
 
@@ -531,8 +647,9 @@ mod tests {
             }
 
             mod test_iac {
-                use super::*;
                 use crate::constants::ECHO;
+
+                use super::*;
 
                 #[test]
                 fn test_double_iac() {
@@ -692,8 +809,10 @@ mod tests {
     }
 
     mod test_encode {
+        use crate::constants::{ECHO, LINEMODE_EDIT, SLC_ABORT, SLC_BRK, SLC_SYNCH};
+        use crate::linemode::{Dispatch, SlcFunction};
+
         use super::*;
-        use crate::constants::ECHO;
 
         #[test]
         fn test_message() {
@@ -805,6 +924,236 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(buffer.as_ref(), &[IAC, SB, CHARSET, CHARSET_TTABLE_REJECTED, IAC, SE]);
+        }
+
+        #[test]
+        fn test_sb_linemode_mode_encode() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::Mode(
+                        LINEMODE_EDIT,
+                    ))),
+                    &mut buffer,
+                )
+                .unwrap();
+
+            assert_eq!(buffer.as_ref(), &[IAC, SB, LINEMODE, MODE, LINEMODE_EDIT, IAC, SE]);
+        }
+
+        #[test]
+        fn test_sb_linemode_mode_decode() {
+            let (mut codec, mut buffer) = setup();
+            buffer.extend([IAC, SB, LINEMODE, MODE, LINEMODE_EDIT, IAC, SE]);
+            let event = codec.decode(&mut buffer).unwrap().unwrap();
+            match event {
+                TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::Mode(
+                    mode,
+                ))) => {
+                    assert_eq!(mode, LINEMODE_EDIT);
+                }
+                _ => panic!("Bad decode!"),
+            };
+        }
+
+        #[test]
+        fn test_sb_linemode_slc_encode() {
+            let (mut codec, mut buffer) = setup();
+            let triples = [
+                (Dispatch::from((SLC_ABORT, 0)), '0'),
+                (Dispatch::from((SLC_SYNCH, 0)), '1'),
+                (Dispatch::from((SLC_BRK, 0)), '2'),
+            ];
+
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::SLC(
+                        triples.to_vec(),
+                    ))),
+                    &mut buffer,
+                )
+                .unwrap();
+
+            assert_eq!(
+                buffer.as_ref(),
+                &[
+                    IAC,
+                    SB,
+                    LINEMODE,
+                    LINEMODE_SLC,
+                    SLC_ABORT,
+                    0,
+                    b'0',
+                    SLC_SYNCH,
+                    0,
+                    b'1',
+                    SLC_BRK,
+                    0,
+                    b'2',
+                    IAC,
+                    SE
+                ]
+            )
+        }
+
+        #[test]
+        fn test_sb_linemode_unk_decode() {
+            let (mut codec, mut buffer) = setup();
+
+            buffer.extend([IAC, SB, LINEMODE, 123, 1, 2, 3, 4, 5, 6, IAC, SE]);
+
+            let event = codec.decode(&mut buffer).unwrap().unwrap();
+
+            match event {
+                TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                    LineModeOption::Unknown(123, data),
+                )) => {
+                    assert_eq!(data.as_ref(), &[1, 2, 3, 4, 5, 6]);
+                }
+                _ => panic!("Bad decode!"),
+            }
+        }
+
+        #[test]
+        fn test_sb_linemode_unk_encode() {
+            let (mut codec, mut buffer) = setup();
+
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                        LineModeOption::Unknown(123, [1, 2, 3, 4, 5, 6].to_vec().into()),
+                    )),
+                    &mut buffer,
+                )
+                .unwrap();
+
+            assert_eq!(buffer.as_ref(), &[IAC, SB, LINEMODE, 123, 1, 2, 3, 4, 5, 6, IAC, SE]);
+        }
+
+        #[test]
+        fn test_sb_linemode_slc_decode() {
+            let (mut codec, mut buffer) = setup();
+
+            buffer.extend([
+                IAC,
+                SB,
+                LINEMODE,
+                LINEMODE_SLC,
+                SLC_ABORT,
+                0,
+                b'0',
+                SLC_SYNCH,
+                0,
+                b'1',
+                SLC_BRK,
+                0,
+                b'2',
+                IAC,
+                SE,
+            ]);
+
+            let event = codec.decode(&mut buffer).unwrap().unwrap();
+
+            match event {
+                TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(LineModeOption::SLC(
+                    triples,
+                ))) => {
+                    assert_eq!(triples.len(), 3);
+
+                    const CHARS: [char; 3] = ['0', '1', '2'];
+                    const FUNCS: [u8; 3] = [SLC_ABORT, SLC_SYNCH, SLC_BRK];
+
+                    for (index, &(dispatch, char)) in triples.iter().enumerate() {
+                        assert_eq!(dispatch.function, SlcFunction::from(FUNCS[index]));
+                        assert_eq!(char, CHARS[index]);
+                    }
+                }
+                _ => panic!("Bad decode!"),
+            }
+        }
+
+        #[test]
+        fn test_sb_linemode_fmask_decode() {
+            let (mut codec, mut buffer) = setup();
+            buffer.extend([
+                IAC,
+                SB,
+                LINEMODE,
+                DO,
+                LINEMODE_FORWARD_MASK,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                123,
+                IAC,
+                SE,
+            ]);
+
+            let event = codec.decode(&mut buffer).unwrap().unwrap();
+
+            match event {
+                TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                    LineModeOption::ForwardMask(ForwardMaskOption::Do(data)),
+                )) => {
+                    assert_eq!(data.len(), 16);
+                    assert_eq!(data[15], 123)
+                }
+                _ => panic!("Bad decode!"),
+            }
+        }
+
+        #[test]
+        fn test_sb_linemode_fmask_encode() {
+            let (mut codec, mut buffer) = setup();
+            codec
+                .encode(
+                    TelnetEvent::Subnegotiate(SubnegotiationType::LineMode(
+                        LineModeOption::ForwardMask(ForwardMaskOption::Do(Vec::with_capacity(16))),
+                    )),
+                    &mut buffer,
+                )
+                .unwrap();
+
+            assert_eq!(
+                buffer.as_ref(),
+                &[
+                    IAC,
+                    SB,
+                    LINEMODE,
+                    DO,
+                    LINEMODE_FORWARD_MASK,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    IAC,
+                    SE
+                ]
+            )
         }
     }
 }

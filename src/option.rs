@@ -1,4 +1,7 @@
-use crate::constants::{CHARSET, ECHO, GA, GMCP, MCCP2, MSP, MSSP, MXP, SGA, TELOPT_EOR};
+use crate::constants::{
+    CHARSET, ECHO, GA, GMCP, LINEMODE, MCCP2, MSP, MSSP, MXP, NAWS, REMOTE_FLOW_CONTROL, SGA,
+    STATUS, TELOPT_EOR, TIMING_MARK,
+};
 
 /// Represents all Telnet options supported by Nectar.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -37,6 +40,11 @@ pub enum TelnetOption {
     MSSP,
     MSP,
     MXP,
+    NAWS,
+    Status,
+    TimingMark,
+    LineMode,
+    RemoteFlowControl,
     /// A generic marker indicating an unknown option.
     Unknown(u8),
 }
@@ -54,6 +62,11 @@ impl From<u8> for TelnetOption {
             MSSP => TelnetOption::MSSP,
             MSP => TelnetOption::MSP,
             MXP => TelnetOption::MXP,
+            NAWS => TelnetOption::NAWS,
+            STATUS => TelnetOption::Status,
+            TIMING_MARK => TelnetOption::TimingMark,
+            LINEMODE => TelnetOption::LineMode,
+            REMOTE_FLOW_CONTROL => TelnetOption::RemoteFlowControl,
             _ => TelnetOption::Unknown(byte),
         }
     }
@@ -72,6 +85,11 @@ impl From<TelnetOption> for u8 {
             TelnetOption::MSSP => MSSP,
             TelnetOption::MSP => MSP,
             TelnetOption::MXP => MXP,
+            TelnetOption::NAWS => NAWS,
+            TelnetOption::Status => STATUS,
+            TelnetOption::TimingMark => TIMING_MARK,
+            TelnetOption::LineMode => LINEMODE,
+            TelnetOption::RemoteFlowControl => REMOTE_FLOW_CONTROL,
             TelnetOption::Unknown(byte) => byte,
         }
     }

@@ -1,5 +1,7 @@
 use bytes::Bytes;
 
+use crate::constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE};
+use crate::linemode::{Dispatch, ForwardMaskOption};
 use crate::option::TelnetOption;
 
 /// Represents all Telnet subnegotiation events supported by Nectar.
@@ -20,8 +22,28 @@ pub enum SubnegotiationType {
     /// Indicates that the receiver acknowledges a TTABLE-IS message, but is
     /// unable to handle it. This will terminate subnegotiation.
     CharsetTTableRejected,
+    LineMode(LineModeOption),
     /// A subnegotiation for an unknown option.
     Unknown(TelnetOption, Bytes),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum LineModeOption {
+    Mode(u8),
+    SLC(Vec<(Dispatch, char)>),
+    ForwardMask(ForwardMaskOption),
+    Unknown(u8, Bytes),
+}
+
+impl From<u8> for LineModeOption {
+    fn from(value: u8) -> Self {
+        match value {
+            MODE => LineModeOption::Mode(0),
+            LINEMODE_SLC => LineModeOption::SLC(Vec::new()),
+            LINEMODE_FORWARD_MASK => LineModeOption::ForwardMask(ForwardMaskOption::Unknown(0)),
+            _ => LineModeOption::Unknown(value, Bytes::new()),
+        }
+    }
 }
 
 impl SubnegotiationType {
@@ -49,6 +71,18 @@ impl SubnegotiationType {
             }
             SubnegotiationType::CharsetRejected => 1,
             SubnegotiationType::CharsetTTableRejected => 1,
+            SubnegotiationType::LineMode(mode) => {
+                match mode {
+                    LineModeOption::SLC(triples) => {
+                        // Mode byte plus length of triples
+                        triples.len() * 3 + 1
+                    }
+                    LineModeOption::Mode(_) => 2,
+                    LineModeOption::ForwardMask(ForwardMaskOption::Do(_)) => 2 + 16,
+                    LineModeOption::ForwardMask(_) => 2,
+                    LineModeOption::Unknown(_, data) => 1 + data.len(),
+                }
+            }
             SubnegotiationType::Unknown(_, bytes) => bytes.len(),
         }
     }
