@@ -719,9 +719,8 @@ mod tests {
             }
 
             mod test_iac {
-                use crate::constants::ECHO;
-
                 use super::*;
+                use crate::constants::ECHO;
 
                 #[test]
                 fn test_double_iac() {
@@ -881,12 +880,11 @@ mod tests {
     }
 
     mod test_encode {
+        use super::*;
         use crate::{
             constants::{ECHO, LINEMODE_EDIT, SLC_ABORT, SLC_BRK, SLC_SYNCH},
             linemode::{Dispatch, SlcFunction},
         };
-
-        use super::*;
 
         #[test]
         fn test_message() {

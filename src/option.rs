@@ -1,6 +1,6 @@
 use crate::constants::{
     BINARY, CHARSET, ECHO, ENVIRON, GA, GMCP, LINEMODE, MCCP2, MSP, MSSP, MXP, NAWS,
-    REMOTE_FLOW_CONTROL, SGA, STATUS, TELOPT_EOR, TIMING_MARK
+    REMOTE_FLOW_CONTROL, SGA, STATUS, TELOPT_EOR, TIMING_MARK,
 };
 
 /// Represents all Telnet options supported by Nectar.

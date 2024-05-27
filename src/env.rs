@@ -244,17 +244,20 @@ enum Escape {
 ///
 /// # Arguments
 ///
-/// * `subvec: &[u8]` - A byte slice representing the encoded environment variable name.
+/// * `subvec: &[u8]` - A byte slice representing the encoded environment
+///   variable name.
 ///
-/// The function decodes the environment variable name, accounting for escape sequences present in
-/// the encoding. The escape sequences considered are ENV_ESC combined with ENV_VAR, ENV_USERVAR,
-/// ENV_VALUE and ENV_ESC as well as IAC (Interpret as Command) escaped with IAC.
+/// The function decodes the environment variable name, accounting for escape
+/// sequences present in the encoding. The escape sequences considered are
+/// ENV_ESC combined with ENV_VAR, ENV_USERVAR, ENV_VALUE and ENV_ESC as well
+/// as IAC (Interpret as Command) escaped with IAC.
 ///
 /// # Returns
 ///  
-/// * `Option<(Vec<u8>, usize)>` - Returns an option containing a tuple. The first element of the
-/// tuple is a vector of bytes representing the decoded environment variable. The second element
-/// represents the count of bytes parsed.
+/// * `Option<(Vec<u8>, usize)>` - Returns an option containing a tuple. The
+///   first element of the tuple is a vector of bytes representing the decoded
+///   environment variable. The second element represents the count of bytes
+///   parsed.
 ///  
 /// If decoding fails due to invalid data, the function returns None.
 ///  
