@@ -298,3 +298,61 @@ pub const SLC_BRKC: u8 = 35;
 
 /// SLC_EORC: End of Record Character
 pub const SLC_EORC: u8 = 36;
+
+/// RFC 1572: Telnet Environment Option
+/// <https://datatracker.ietf.org/doc/html/rfc1572>
+/// Negotiate About Environment Variables: Telnet option
+pub const ENVIRON: u8 = 39;
+
+// ENVIRON Option Sub-negotiation codes
+/// Environment variable definition
+pub const ENV_IS: u8 = 0;
+/// Request to send environment variables
+pub const ENV_SEND: u8 = 1;
+/// Environment variable change notification
+pub const ENV_INFO: u8 = 2;
+
+// ENVIRON Variable Types
+/// Environment variable
+pub const ENV_VAR: u8 = 0;
+/// Value of variable
+pub const ENV_VALUE: u8 = 1;
+
+// ENVIRON ESC Byte
+/// Indicates the data following it should be inserted into the data stream as is.
+pub const ENV_ESC: u8 = 2;
+// ENVIRON User-defined variable
+/// User-defined variable
+pub const ENV_USERVAR: u8 = 3;
+
+/// `ENV_USER`: Represents the "User" environment variable in accordance with RFC1572.
+/// This is typically used to identify the user on the remote system.
+pub const ENV_USER: &str = "USER";
+
+/// `ENV_JOB`: Represents the "Job" or "Jobname" environment variable in accordance with RFC1572.
+/// This is used to pass the id of the job (process, service) the user wants to use.
+pub const ENV_JOB: &str = "JOB";
+
+/// `ENV_ACCT`: Represents the "Acct" or "Account" environment variable in accordance with RFC1572.
+/// This is used for the account id the client wishes to use.
+pub const ENV_ACCT: &str = "ACCT";
+
+/// `ENV_PRINTER`: Represents the "Printer" environment variable in accordance with RFC1572.
+/// This is used to specify the default location for printer output
+pub const ENV_PRINTER: &str = "PRINTER";
+
+/// `ENV_SYSTEMTYPE`: Represents the "SystemType" environment variable in accordance with RFC1572.
+/// This variable identifies the type of operating system of the client.
+pub const ENV_SYSTEMTYPE: &str = "SYSTEMTYPE";
+
+/// `ENV_DISPLAY`: Represents the "Display" environment variable in accordance with RFC1572.
+/// This is used to convey information about the user's display environment, similar to
+/// the DISPLAY environment variable in Unix-like systems.
+pub const ENV_DISPLAY: &str = "DISPLAY";
+
+/// Binary Transmission - <https://datatracker.ietf.org/doc/rfc856/>
+/// In accordance with RFC856, this option specifies a way to
+/// indicate binary data should be transmitted across the connection.
+/// It allows the sender and receiver to negotiate and agree upon
+/// the data transfer mode to use during a Telnet session.
+pub const BINARY: u8 = 0;

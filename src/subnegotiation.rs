@@ -2,6 +2,7 @@ use bytes::Bytes;
 
 use crate::{
     constants::{LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE},
+    env::EnvironmentOperation,
     linemode::{Dispatch, ForwardMaskOption},
     option::TelnetOption,
 };
@@ -24,7 +25,9 @@ pub enum SubnegotiationType {
     /// Indicates that the receiver acknowledges a TTABLE-IS message, but is
     /// unable to handle it. This will terminate subnegotiation.
     CharsetTTableRejected,
+    /// Represents different line-mode options possible in a telnet session.
     LineMode(LineModeOption),
+    Environment(EnvironmentOperation),
     /// A subnegotiation for an unknown option.
     Unknown(TelnetOption, Bytes),
 }
@@ -85,6 +88,26 @@ impl SubnegotiationType {
                     LineModeOption::Unknown(_, data) => 1 + data.len(),
                 }
             }
+            SubnegotiationType::Environment(op) => match op {
+                EnvironmentOperation::Is(vars) | EnvironmentOperation::Info(vars) => {
+                    vars.iter()
+                        .map(|(k, v)| {
+                            k.encoded_size()
+                                + match v {
+                                    None => 0,
+                                    Some(value) if value.is_empty() => 1,
+                                    Some(value) => value.len() + 1,
+                                }
+                        })
+                        .sum::<usize>()
+                        + 1
+                }
+                EnvironmentOperation::Send(vars) => {
+                    vars.iter().map(|v| v.encoded_size()).sum::<usize>() + 1
+                }
+
+                EnvironmentOperation::Unknown(_, data) => 1 + data.len(),
+            },
             SubnegotiationType::Unknown(_, bytes) => bytes.len(),
         }
     }

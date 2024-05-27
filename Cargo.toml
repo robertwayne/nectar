@@ -16,3 +16,6 @@ tokio-util = { version = "0.7", features = ["codec"] }
 
 [lib]
 doctest = false
+
+[features]
+unicode = []

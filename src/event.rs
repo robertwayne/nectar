@@ -9,6 +9,9 @@ use crate::{
 pub enum TelnetEvent {
     /// A single byte character.
     Character(u8),
+    /// A single UTF8 character.
+    #[cfg(feature = "unicode")]
+    Unicode(char),
     /// A message that guarantees it ends with `\r\n`.
     Message(String),
     /// A message that does not guarantee it ends with `\r\n`. Allows for
@@ -48,6 +51,8 @@ impl TelnetEvent {
             | TelnetEvent::Will(_)
             | TelnetEvent::Dont(_)
             | TelnetEvent::Wont(_) => 6,
+            #[cfg(feature = "unicode")]
+            TelnetEvent::Unicode(c) => c.len_utf8(),
             _ => 5,
         }
     }
@@ -70,6 +75,8 @@ impl From<TelnetEvent> for u8 {
             TelnetEvent::Character(byte) => byte,
             TelnetEvent::GoAhead => GA,
             TelnetEvent::Nop => NOP,
+            #[cfg(feature = "unicode")]
+            TelnetEvent::Unicode(_) => 0x00,
         }
     }
 }
