@@ -1,5 +1,11 @@
 # Change Log
 
+## 2024.05.27 - v0.4.0
+
+- Added support for environment options [RFC1572](https://www.rfc-editor.org/rfc/rfc1572.html). [@not-jan](https://github.com/not-jan)
+- Added support for binary transmission [RFC856](https://www.rfc-editor.org/rfc/rfc856.html). [@not-jan](https://github.com/not-jan)
+- Added support for Unicode characters in character-at-a-time mode. This is gated behind the `unicode` feature. [@not-jan](https://github.com/not-jan)
+
 ## 2024.04.07 - v0.3.0
 
 - Added support for character-at-a-time mode and line mode.
