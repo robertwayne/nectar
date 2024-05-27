@@ -1,6 +1,6 @@
 use crate::constants::{
-    CHARSET, ECHO, GA, GMCP, LINEMODE, MCCP2, MSP, MSSP, MXP, NAWS, REMOTE_FLOW_CONTROL, SGA,
-    STATUS, TELOPT_EOR, TIMING_MARK,
+    BINARY, CHARSET, ECHO, ENVIRON, GA, GMCP, LINEMODE, MCCP2, MSP, MSSP, MXP, NAWS,
+    REMOTE_FLOW_CONTROL, SGA, STATUS, TELOPT_EOR, TIMING_MARK
 };
 
 /// Represents all Telnet options supported by Nectar.
@@ -45,6 +45,8 @@ pub enum TelnetOption {
     TimingMark,
     LineMode,
     RemoteFlowControl,
+    Binary,
+    Environ,
     /// A generic marker indicating an unknown option.
     Unknown(u8),
 }
@@ -67,6 +69,8 @@ impl From<u8> for TelnetOption {
             TIMING_MARK => TelnetOption::TimingMark,
             LINEMODE => TelnetOption::LineMode,
             REMOTE_FLOW_CONTROL => TelnetOption::RemoteFlowControl,
+            BINARY => TelnetOption::Binary,
+            ENVIRON => TelnetOption::Environ,
             _ => TelnetOption::Unknown(byte),
         }
     }
@@ -90,6 +94,8 @@ impl From<TelnetOption> for u8 {
             TelnetOption::TimingMark => TIMING_MARK,
             TelnetOption::LineMode => LINEMODE,
             TelnetOption::RemoteFlowControl => REMOTE_FLOW_CONTROL,
+            TelnetOption::Binary => BINARY,
+            TelnetOption::Environ => ENVIRON,
             TelnetOption::Unknown(byte) => byte,
         }
     }

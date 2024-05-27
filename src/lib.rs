@@ -14,9 +14,10 @@ use tokio_util::codec::{Decoder, Encoder};
 use crate::{
     constants::{
         CHARSET, CHARSET_ACCEPTED, CHARSET_REJECTED, CHARSET_REQUEST, CHARSET_TTABLE_REJECTED, DO,
-        DONT, IAC, LINEMODE, LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE, NAWS, NOP, SB, SE, WILL,
-        WONT,
+        DONT, ENVIRON, IAC, LINEMODE, LINEMODE_FORWARD_MASK, LINEMODE_SLC, MODE, NAWS, NOP, SB, SE,
+        WILL, WONT,
     },
+    env::{decode_env, encode_env_op},
     error::TelnetError,
     event::TelnetEvent,
     linemode::ForwardMaskOption,
@@ -26,6 +27,8 @@ use crate::{
 
 /// Various byte or byte sequences used in the Telnet protocol.
 pub mod constants;
+/// Telnet environment options
+pub mod env;
 /// Codec and Io errors that may occur while processing Telnet events.
 pub mod error;
 /// Top-level Telnet events, such as Message, Do, Will, and Subnegotiation.
@@ -52,12 +55,22 @@ pub struct TelnetCodec {
     /// If this field is set to false, nectar will generate an event for each
     /// character instead of each message
     pub message_mode: bool,
+    /// Attempt to parse unicode when received
+    #[cfg(feature = "unicode")]
+    pub unicode: bool,
 }
 
 impl TelnetCodec {
     #[must_use]
     pub fn new(max_buffer_length: usize) -> Self {
-        TelnetCodec { sga: false, max_buffer_length, buffer: Vec::new(), message_mode: true }
+        TelnetCodec {
+            sga: false,
+            max_buffer_length,
+            buffer: Vec::new(),
+            message_mode: true,
+            #[cfg(feature = "unicode")]
+            unicode: false,
+        }
     }
 }
 
@@ -103,6 +116,44 @@ impl Encoder<TelnetEvent> for TelnetCodec {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(feature = "unicode")]
+fn decode_utf8(byte_index: usize, buffer: &mut BytesMut, start: u8) -> Option<TelnetEvent> {
+    let length = match start {
+        0xC2..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        // In theory this should never happen...
+        0xF0..=0xF4 => 4,
+        _ => 1,
+    };
+
+    if length == 1 {
+        buffer.advance(byte_index + 1);
+        Some(TelnetEvent::Unicode(start as char))
+    } else {
+        if let Ok(s) = std::str::from_utf8(&buffer[byte_index..byte_index + length]) {
+            if s.chars().count() != 1 {
+                // Something weird happened here...
+                // Maybe we should disconnect / fail here instead
+
+                buffer.advance(byte_index + length);
+                return Some(TelnetEvent::Nop);
+            }
+
+            // We can unwrap here since we checked it above.
+            let c = s.chars().next().unwrap();
+
+            buffer.advance(byte_index + length);
+            return Some(TelnetEvent::Unicode(c));
+        }
+
+        // We were unable to parse the unicode...
+        // Discard the input and act like nothing happened!
+
+        buffer.advance(byte_index + length);
+        Some(TelnetEvent::Nop)
     }
 }
 
@@ -267,6 +318,7 @@ fn decode_subnegotiation_end(
             NAWS => decode_negotiate_about_window_size(&subvec),
             CHARSET => decode_charset(&subvec),
             LINEMODE => decode_linemode(&subvec),
+            ENVIRON => decode_env(&subvec),
             _ => Some(decode_unknown(option, subvec)),
         };
 
@@ -376,11 +428,27 @@ fn decode_bytes(
 
                 decode_next_byte(codec, &mut codec_buffer_size, buffer[*byte_index]);
             }
+            #[cfg(not(feature = "unicode"))]
             c if !codec.message_mode => {
                 let mut codec_buffer = mem::take(&mut codec.buffer);
                 codec_buffer.pop();
                 buffer.advance(*byte_index + 1);
                 return Some(TelnetEvent::Character(c));
+            }
+
+            #[cfg(feature = "unicode")]
+            c if !codec.message_mode => {
+                // Unicode support is compiled in but not enabled,
+                // so just pass characters on as they are
+
+                if !codec.unicode {
+                    let mut codec_buffer = mem::take(&mut codec.buffer);
+                    codec_buffer.pop();
+                    buffer.advance(*byte_index + 1);
+                    return Some(TelnetEvent::Character(c));
+                }
+
+                return decode_utf8(*byte_index, buffer, c);
             }
             _ => decode_next_byte(codec, &mut codec_buffer_size, buffer[*byte_index]),
         };
@@ -443,6 +511,11 @@ fn encode_sb(sb: SubnegotiationType, buffer: &mut BytesMut) {
         SubnegotiationType::CharsetTTableRejected => {
             buffer.reserve(6);
             buffer.extend([IAC, SB, CHARSET, CHARSET_TTABLE_REJECTED, IAC, SE]);
+        }
+        SubnegotiationType::Environment(op) => {
+            buffer.extend([IAC, SB, ENVIRON]);
+            encode_env_op(op, buffer);
+            buffer.extend([IAC, SE]);
         }
         SubnegotiationType::Unknown(option, bytes) => {
             let mut bytes_buffer_size = bytes.len() + 5;
@@ -646,8 +719,9 @@ mod tests {
             }
 
             mod test_iac {
-                use super::*;
                 use crate::constants::ECHO;
+
+                use super::*;
 
                 #[test]
                 fn test_double_iac() {
@@ -807,11 +881,12 @@ mod tests {
     }
 
     mod test_encode {
-        use super::*;
         use crate::{
             constants::{ECHO, LINEMODE_EDIT, SLC_ABORT, SLC_BRK, SLC_SYNCH},
             linemode::{Dispatch, SlcFunction},
         };
+
+        use super::*;
 
         #[test]
         fn test_message() {
@@ -824,6 +899,21 @@ mod tests {
             assert!(msg.len() > codec.max_buffer_length);
             codec.encode(TelnetEvent::Message(msg), &mut buffer).unwrap();
             assert_eq!(buffer.as_ref(), b"this message is larger than the max buffer length\r\n");
+        }
+
+        #[test]
+        #[cfg(feature = "unicode")]
+        fn test_unicode() {
+            let (mut codec, mut buffer) = setup();
+            codec.message_mode = false;
+            codec.unicode = true;
+            codec.sga = false;
+
+            buffer.extend(b"\xC3\xA4");
+
+            let result = codec.decode(&mut buffer);
+
+            assert!(matches!(result, Ok(Some(TelnetEvent::Unicode('ä')))));
         }
 
         #[test]
