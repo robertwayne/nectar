@@ -4,7 +4,7 @@ use crate::constants::{
 };
 
 /// Represents all Telnet options supported by Nectar.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TelnetOption {
     /// Echo a message back to the other side
     Echo,
